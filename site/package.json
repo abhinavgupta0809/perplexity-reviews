@@ -1,0 +1,17 @@
+{
+  "name": "perplexity-reviews-site",
+  "version": "1.0.0",
+  "description": "Static dashboard for Perplexity app reviews analysis with Vercel Web Analytics",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server",
+    "test": "echo \"No tests configured\" && exit 0"
+  },
+  "keywords": ["perplexity", "reviews", "analytics", "dashboard"],
+  "author": "Abhinav Gupta",
+  "license": "ISC",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
