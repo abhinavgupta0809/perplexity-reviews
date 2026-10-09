@@ -1,0 +1,566 @@
+{
+  "version": 1,
+  "about": "Written by Claude from the Oct 9, 2026 annotated corpus. Narrative only. Every number shown on the site comes from running each item's `match` against data/annotated_reviews.csv in build_site_data.py. Tokens in text ({{count}}, {{pct_low_star}}, {{avg_rating}}, {{ios_count}}, {{android_count}}, {{pct_of_substantive}}) are filled from that item's own match.",
+  "match_spec": {
+    "labels_any": "review has at least one of these labels",
+    "categories_any": "review has at least one of these categories",
+    "categories_all": "review has every one of these categories",
+    "pattern": "case-insensitive regex searched in lowercase title + review_text + english_translation + topic, joined by spaces",
+    "regression_claim": "true = only reviews with regression_claim TRUE",
+    "competitors_any": "review names at least one of these competitors",
+    "combine": "all present fields must hold (AND)"
+  },
+  "evidence_note": "Store reviews are self-selected and skew to people who are delighted or angry. Treat everything here as a signal to investigate, not a validated problem or a market size.",
+  "callouts": [
+    {
+      "id": "c_money",
+      "placement": "overview",
+      "title": "The sharpest complaints are about money, not answers",
+      "text": "{{count}} complaints and requests are about credits, free limits, pricing, or billing. {{pct_low_star}} of them come with 1 or 2 stars.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Credits & Paid Limits",
+          "Free Limits & Paywall",
+          "Pricing & Value",
+          "Billing & Subscription"
+        ]
+      }
+    },
+    {
+      "id": "c_accuracy",
+      "placement": "overview",
+      "title": "Accuracy is the largest single complaint",
+      "text": "{{count}} reviews say answers were wrong, invented, or missed the question. Average rating {{avg_rating}}.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint"
+        ],
+        "categories_any": [
+          "Answer Accuracy"
+        ]
+      }
+    },
+    {
+      "id": "c_regression",
+      "placement": "overview",
+      "title": "\"It used to be better\"",
+      "text": "{{count}} reviewers say the product got worse than it was. {{ios_count}} of them are on iOS, far above iOS's share of the corpus.",
+      "match": {
+        "regression_claim": true
+      }
+    },
+    {
+      "id": "c_lowsignal",
+      "placement": "overview",
+      "title": "Most reviews say nothing specific",
+      "text": "Everything in Deep Dive and Opportunities rests on the reviews that name a feature, a problem, or a use case. The rest count toward volume and ratings only.",
+      "match": {
+        "labels_any": [
+          "Specific Praise",
+          "Specific Complaint",
+          "Feature Request"
+        ]
+      }
+    },
+    {
+      "id": "c_ios",
+      "placement": "overview",
+      "title": "iOS is a small, angrier sample",
+      "text": "Apple's feed returns at most 500 reviews per country, so iOS is thin here and US history starts Jul 29. Read platform comparisons with the review counts beside them.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint"
+        ],
+        "platform": "ios"
+      }
+    }
+  ],
+  "improvements": [
+    {
+      "id": "i_credits",
+      "type": "explore",
+      "title": "Paying users run out of credits",
+      "desc": "Subscribers say they hit a credit wall mid-task and are asked to buy more on top of a plan they thought covered everything. Many describe it as a bait and switch. Half of these reviews are on iOS.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Credits & Paid Limits"
+        ]
+      },
+      "short": "Credits run out"
+    },
+    {
+      "id": "i_free_images",
+      "type": "explore",
+      "title": "Free tier stops at one photo or one image",
+      "desc": "Free users hit the upload or image-generation cap on the first or second try, often before they've seen the feature work. Several say they can't judge whether Pro is worth it. Almost entirely Android.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_all": [
+          "Free Limits & Paywall",
+          "Images & Files"
+        ]
+      },
+      "short": "One-photo limit"
+    },
+    {
+      "id": "i_free_questions",
+      "type": "explore",
+      "title": "Free question limits and upgrade prompts",
+      "desc": "The app stops answering after a few questions and shows a payment screen. Reviewers compare this with free tiers elsewhere.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Free Limits & Paywall"
+        ]
+      },
+      "short": "Free question cap"
+    },
+    {
+      "id": "i_wrong",
+      "type": "fix",
+      "title": "Wrong or invented answers",
+      "desc": "Wrong facts, made-up numbers, contradictions, and answers that have to be checked by hand. The most common complaint in the corpus.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint"
+        ],
+        "categories_any": [
+          "Answer Accuracy"
+        ]
+      },
+      "short": "Wrong answers"
+    },
+    {
+      "id": "i_ignores",
+      "type": "fix",
+      "title": "Doesn't follow what was asked",
+      "desc": "The model misreads the question or ignores explicit instructions, even after the user repeats them.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint"
+        ],
+        "categories_any": [
+          "Answer Accuracy"
+        ],
+        "pattern": "ignor|misunderst|misread|not listen|doesn.t listen|did(n.t| not) understand|does(n.t| not) understand|instruction"
+      },
+      "short": "Ignores the ask"
+    },
+    {
+      "id": "i_cancel",
+      "type": "fix",
+      "title": "Can't cancel, can't get a refund",
+      "desc": "Users can't find how to cancel, are charged after cancelling, or report charges they didn't authorize. The lowest-rated cluster here.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Billing & Subscription"
+        ],
+        "pattern": "cancel|refund|unauthor|charged|charge|unsubscrib|renew"
+      },
+      "short": "Cancel and refunds"
+    },
+    {
+      "id": "i_promos",
+      "type": "fix",
+      "title": "Partner offers that end badly",
+      "desc": "Free Pro through a carrier, PayPal, or a phone maker that ends early, can't be cancelled, or turns into a charge.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "pattern": "airtel|paypal|samsung|\\btim\\b|revolut|telekom|promo|voucher|coupon|redeem"
+      },
+      "short": "Partner offers"
+    },
+    {
+      "id": "i_bugs",
+      "type": "fix",
+      "title": "Things that stopped working",
+      "desc": "Crashes, freezes, cut-off responses, failed installs, and features that broke after an update.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint"
+        ],
+        "categories_any": [
+          "Bugs & Stability"
+        ]
+      },
+      "short": "Broken things"
+    },
+    {
+      "id": "i_style",
+      "type": "explore",
+      "title": "Tone, bias, and refusals",
+      "desc": "Answers described as rude, condescending, politically slanted, over-filtered, or far longer than the question needed.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Answer Style & Filters"
+        ]
+      },
+      "short": "Tone and bias"
+    },
+    {
+      "id": "i_voice",
+      "type": "fix",
+      "title": "Voice mode and read-aloud",
+      "desc": "Speech recognition misses words, the assistant talks over the user, voice cuts off, and read-aloud went missing for some.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Voice & Dictation"
+        ]
+      },
+      "short": "Voice mode"
+    },
+    {
+      "id": "i_history",
+      "type": "fix",
+      "title": "Lost chats and lost context",
+      "desc": "History disappears, long chats forget earlier turns, and threads can't be renamed or organized.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Threads & History"
+        ]
+      },
+      "short": "Lost chats"
+    },
+    {
+      "id": "i_support",
+      "type": "fix",
+      "title": "Support doesn't answer",
+      "desc": "Billing and account problems that go unanswered or end with \"nothing we can do\".",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Customer Support"
+        ]
+      },
+      "short": "Support"
+    },
+    {
+      "id": "i_computer",
+      "type": "explore",
+      "title": "Computer mode burns credits",
+      "desc": "Reviews that mention Computer by name: tasks that drain credits before finishing, and being switched into it by default.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "pattern": "\\bcomputer\\b"
+      },
+      "short": "Computer credits"
+    },
+    {
+      "id": "i_models",
+      "type": "explore",
+      "title": "Model choice taken away",
+      "desc": "Pro users say the model they pick isn't the one that answers, or that better models are now rationed.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Model Choice"
+        ]
+      },
+      "short": "Model choice"
+    },
+    {
+      "id": "i_login",
+      "type": "fix",
+      "title": "Forced sign-in and phone number",
+      "desc": "Stuck at sign-in, locked out, or required to give a phone number to manage or cancel an account.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Login & Account"
+        ]
+      },
+      "short": "Sign-in"
+    },
+    {
+      "id": "i_preinstalled",
+      "type": "explore",
+      "title": "\"Why is this on my phone?\"",
+      "desc": "Android users who didn't install the app and resent it being there, plus permission and data-deletion worries.",
+      "match": {
+        "labels_any": [
+          "Specific Complaint",
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Privacy & Permissions"
+        ]
+      },
+      "short": "Preinstalled app"
+    }
+  ],
+  "feature_requests": [
+    {
+      "id": "f_free_uploads",
+      "title": "More free photo and file uploads",
+      "desc": "A higher daily cap, a few free image generations, or a reset that doesn't take a month.",
+      "match": {
+        "labels_any": [
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Images & Files",
+          "Free Limits & Paywall"
+        ]
+      }
+    },
+    {
+      "id": "f_pricing",
+      "title": "A trial, student, or regional price",
+      "desc": "A free month to test Pro, student plans, and prices that fit local incomes.",
+      "match": {
+        "labels_any": [
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Pricing & Value"
+        ]
+      }
+    },
+    {
+      "id": "f_search",
+      "title": "Deeper, fresher research",
+      "desc": "More context in Deep Research, verified and current data, and better source handling.",
+      "match": {
+        "labels_any": [
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Search & Sources"
+        ]
+      }
+    },
+    {
+      "id": "f_ui",
+      "title": "Interface fixes",
+      "desc": "Readable dark mode, text size, hiding follow-up suggestions, simpler navigation.",
+      "match": {
+        "labels_any": [
+          "Feature Request"
+        ],
+        "categories_any": [
+          "UI / UX"
+        ]
+      }
+    },
+    {
+      "id": "f_voice",
+      "title": "Better voice",
+      "desc": "Read-aloud, hands-free and push-to-talk modes, more natural voices.",
+      "match": {
+        "labels_any": [
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Voice & Dictation"
+        ]
+      }
+    },
+    {
+      "id": "f_threads",
+      "title": "Organize and keep chats",
+      "desc": "Rename, folders, search, branching a conversation, memory that's understandable.",
+      "match": {
+        "labels_any": [
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Threads & History"
+        ]
+      }
+    },
+    {
+      "id": "f_computer",
+      "title": "Agent features without the paywall",
+      "desc": "Some automation or Computer use on lower tiers.",
+      "match": {
+        "labels_any": [
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Computer & Agents"
+        ]
+      }
+    },
+    {
+      "id": "f_models",
+      "title": "More models, more freely",
+      "desc": "Specific models added, and fewer limits on switching.",
+      "match": {
+        "labels_any": [
+          "Feature Request"
+        ],
+        "categories_any": [
+          "Model Choice"
+        ]
+      }
+    }
+  ],
+  "strengths": [
+    {
+      "id": "s_research",
+      "title": "Research is the reason people stay",
+      "desc": "Praise that names research, in any language.",
+      "match": {
+        "labels_any": [
+          "Specific Praise"
+        ],
+        "pattern": "research|recherche|investiga|pesquisa|riset|بحث"
+      }
+    },
+    {
+      "id": "s_sources",
+      "title": "Sources and fresh information",
+      "desc": "Citations, links, and up-to-date answers are the feature praised by name most often.",
+      "match": {
+        "labels_any": [
+          "Specific Praise"
+        ],
+        "categories_any": [
+          "Search & Sources"
+        ]
+      }
+    },
+    {
+      "id": "s_study",
+      "title": "Students and homework",
+      "desc": "Study, school, exams, and homework show up across languages.",
+      "match": {
+        "labels_any": [
+          "Specific Praise"
+        ],
+        "pattern": "stud|school|homework|exam|student|tarea|estudi|devoir|étud|escola|belajar|tugas"
+      }
+    },
+    {
+      "id": "s_accuracy",
+      "title": "Trusted answers",
+      "desc": "Praise for accurate, reliable, precise answers. The same quality that draws the most complaints.",
+      "match": {
+        "labels_any": [
+          "Specific Praise"
+        ],
+        "categories_any": [
+          "Answer Accuracy"
+        ]
+      }
+    },
+    {
+      "id": "s_speed",
+      "title": "Fast",
+      "desc": "Quick answers are a consistent point of praise.",
+      "match": {
+        "labels_any": [
+          "Specific Praise"
+        ],
+        "categories_any": [
+          "Speed"
+        ]
+      }
+    },
+    {
+      "id": "s_models",
+      "title": "Many models in one app",
+      "desc": "Paying once for access to several model families.",
+      "match": {
+        "labels_any": [
+          "Specific Praise"
+        ],
+        "categories_any": [
+          "Model Choice"
+        ]
+      }
+    }
+  ],
+  "label_takeaways": {
+    "Generic Good": [
+      "The largest group by far, and it carries the star average. It says the app is liked; it doesn't say why.",
+      "Mostly one to three words, in dozens of languages. Leave it out of any qualitative read."
+    ],
+    "Specific Praise": [
+      "Accuracy, research and sources, everyday use cases like study, and speed cover most of it.",
+      "ChatGPT is the competitor named most often, in praise as well as in complaints."
+    ],
+    "Specific Complaint": [
+      "Two different angry users: free users stopped by limits, and paying users stopped by credits.",
+      "Reviewers who say the product got worse point most often to accuracy, then to credits and free limits.",
+      "Billing and account complaints are the lowest-rated of all. They're operational, and fixable."
+    ],
+    "Feature Request": [
+      "A small group, and friendlier than the complaints: most rate the app 4 or 5 stars.",
+      "Most requests ask for something that exists to be free or less limited, not for something new."
+    ],
+    "Generic Bad": [
+      "Short dismissals with nothing to act on. Some name a competitor as better."
+    ],
+    "Nonsense": [
+      "Off-topic text, test strings, and reviews that seem meant for another app. Excluded from sentiment reads."
+    ]
+  },
+  "category_notes": {
+    "Answer Accuracy": "The category with the most reviews, and it cuts both ways: heavy praise and the largest block of complaints.",
+    "Search & Sources": "Mostly praise. Sources and current information are what users name when they explain why they chose Perplexity.",
+    "Answer Style & Filters": "Clear explanations earn praise. Tone, bias, and refusals earn complaints.",
+    "Model Choice": "Praised as a bundle of models; criticized when the choice is limited or overridden.",
+    "Credits & Paid Limits": "Almost entirely complaints, and half of them on iOS. These are paying users.",
+    "Free Limits & Paywall": "The highest-volume pain point. Free users hit a wall early, most often on photos and images.",
+    "Pricing & Value": "Split between \"too expensive\" and requests for trials or cheaper tiers.",
+    "Billing & Subscription": "Cancellation, refunds, and unexpected charges. The lowest ratings in the corpus.",
+    "Customer Support": "Rarely the first problem, usually the second: an issue that support didn't resolve.",
+    "Computer & Agents": "A new surface with mixed reviews: impressive when it works, costly in credits when it doesn't.",
+    "Voice & Dictation": "Recognition errors, interruptions, and missing read-aloud.",
+    "Images & Files": "Mostly about limits on uploading and generating, less about quality.",
+    "Threads & History": "Lost history, lost context, and no way to organize chats.",
+    "Bugs & Stability": "Breakage after updates, failed installs, cut-off responses.",
+    "Speed": "Mostly praise for fast answers. Complaints are about slow responses and slow image generation.",
+    "Login & Account": "Sign-in loops, lockouts, and a phone-number requirement.",
+    "UI / UX": "Mostly praise for ease of use. Requests are small and concrete.",
+    "Privacy & Permissions": "Preinstalled-app resentment on Android, plus permission and data-deletion concerns.",
+    "Use Cases": "What people use it for: study, homework, work, daily questions. Nearly all positive.",
+    "Other": "Specific reviews that fit nowhere else: ads, language support, regional availability."
+  }
+}

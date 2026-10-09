@@ -1,0 +1,121 @@
+review_id,platform,rating,gold_labels,gold_categories,gold_sentiment
+ios_14399312229,ios,1,Specific Complaint,Free Limits & Paywall | Images & Files,1
+ios_14503917015,ios,1,Specific Complaint,Answer Accuracy | Answer Style & Filters,1
+ios_14623584825,ios,1,Specific Complaint,Answer Accuracy,1
+ios_14331454112,ios,1,Specific Complaint,Threads & History,1
+ios_14352986654,ios,1,Specific Complaint,UI / UX,1
+ios_14369213488,ios,2,Feature Request,Model Choice,3
+ios_14335185061,ios,1,Specific Complaint,Answer Accuracy,1
+ios_14434673554,ios,1,Nonsense,,3
+ios_14366767044,ios,1,Specific Complaint,Free Limits & Paywall | Images & Files,1
+ios_14337238988,ios,1,Specific Complaint,Billing & Subscription,1
+ios_14574918128,ios,1,Specific Complaint,Answer Accuracy,2
+ios_14609128928,ios,1,Specific Complaint,Answer Style & Filters | Voice & Dictation,1
+ios_14338594336,ios,1,Generic Bad,,1
+ios_14582871733,ios,1,Specific Complaint,Voice & Dictation,1
+ios_14502308841,ios,5,Generic Good,,5
+ios_14350799597,ios,5,Generic Good,,5
+ios_14424509872,ios,5,Generic Good,,5
+ios_14346380096,ios,5,Generic Good,,5
+ios_14453574683,ios,5,Generic Good,,5
+ios_14393631632,ios,5,Specific Praise | Specific Complaint,Search & Sources | Answer Accuracy,4
+ios_14554233799,ios,5,Specific Praise,Search & Sources,5
+ios_14568653544,ios,5,Specific Praise,Use Cases,5
+ios_14558830843,ios,5,Specific Praise,Search & Sources | Voice & Dictation,5
+ios_14634062434,ios,5,Specific Praise,Use Cases,5
+ios_14566392813,ios,3,Specific Complaint,Credits & Paid Limits,2
+ios_14361823121,ios,5,Generic Good,,5
+ios_14591163244,ios,5,Specific Praise,Search & Sources,5
+play_7d23d269-9867-4922-a585-7f644d1b1db3,android,1,Specific Complaint,Answer Accuracy | Bugs & Stability,1
+play_e510fe22-d977-4cde-9932-f3d4e53ae59b,android,2,Specific Complaint | Generic Good,Free Limits & Paywall | Privacy & Permissions,2
+play_f7700608-c332-489a-a61f-c72f8952c214,android,1,Generic Bad,,2
+play_68ce61bc-92b6-4185-b531-4d28a20f7dce,android,1,Specific Complaint,Model Choice,1
+play_13b4c683-55ae-4ec5-8caa-f0ac793b93e9,android,2,Specific Complaint,Search & Sources | Voice & Dictation,2
+play_d4bcb799-ee59-4efa-bc02-be9a3bbfe489,android,1,Specific Complaint,Answer Accuracy | Answer Style & Filters,1
+play_70cc2200-552a-4eef-8c8d-e3fa31a44076,android,1,Specific Complaint,Bugs & Stability,1
+play_1b922b89-032e-416a-a3fa-dd1bb5b58c5e,android,2,Specific Complaint,Search & Sources,1
+play_0a882a98-3abc-4152-b2f2-af3960f6858f,android,1,Generic Bad,,1
+play_5b266b74-c3b7-445c-a8ad-6f240d26ce4c,android,1,Specific Complaint,Credits & Paid Limits,1
+play_a4d50b73-0b0e-4e90-9d58-be60ed5abefb,android,1,Specific Complaint,Free Limits & Paywall | Images & Files,1
+play_87b1907a-dd20-4dd7-a482-92b170bebc9b,android,2,Specific Complaint,Images & Files,2
+play_7bbbadeb-9a12-4ea0-b61b-59e8ddfb13d5,android,1,Specific Complaint,UI / UX,1
+play_fad06dc9-bb66-4a1a-8a47-aa7d1784f3d0,android,1,Specific Complaint,Images & Files,1
+play_76b91c9b-7f00-41aa-96c9-34bb2659ef93,android,1,Specific Complaint,Free Limits & Paywall | Images & Files,2
+play_596d8f54-8073-4816-b28a-fe95423622dc,android,1,Specific Complaint,Answer Accuracy,1
+play_2c053e86-71d7-4e94-a8f4-3d6f996001f9,android,1,Specific Complaint,Free Limits & Paywall,1
+play_61a22863-c19c-4ce2-ac1e-20f4f0e86207,android,1,Specific Complaint,Billing & Subscription | Credits & Paid Limits,2
+play_5789584c-c552-4b0f-8c02-b8603021ce4a,android,1,Specific Complaint,Billing & Subscription,1
+play_dab3cecb-6a6e-487f-b73c-ed4ff413f2c9,android,1,Specific Complaint,Credits & Paid Limits,1
+play_b6c23a84-8c65-4d80-8c0d-ce388ff35326,android,1,Specific Complaint,Answer Accuracy,1
+play_82fb6203-1f28-4360-8f50-620740772250,android,2,Feature Request,Images & Files,3
+play_770cb999-5e17-43b7-8c61-6765d98f3f69,android,1,Specific Complaint,Speed | Voice & Dictation,2
+play_a9a3cc58-595f-4dae-84be-db1a4ab1fbe1,android,1,Specific Complaint,Free Limits & Paywall,1
+play_04cb531c-89ab-4db0-a50b-37800e9c8739,android,1,Specific Complaint,Free Limits & Paywall | Images & Files,1
+play_c8416b75-501b-4bba-a548-8320378c2a1b,android,1,Generic Bad,,1
+play_e2b29b00-98c1-4eb1-9f85-c93a548a6efa,android,1,Specific Complaint,Free Limits & Paywall | Images & Files,1
+play_05f1b921-ca03-479a-a84d-b18fb4beeb40,android,1,Specific Complaint,Free Limits & Paywall,1
+play_2c2c33f1-e1ef-46c2-b0b9-c86ce241b297,android,1,Generic Bad,,1
+play_2d265a7b-a723-45db-bd62-442e09b96b5c,android,1,Nonsense,,3
+play_9d436729-2871-4573-940d-87357ee1e694,android,1,Specific Complaint,Images & Files,2
+play_d9245ce0-9b37-4a9a-bcb3-eeb2adaa63cb,android,1,Feature Request,Billing & Subscription,2
+play_9953c366-d2b1-47c4-b33a-1ca6f18afb12,android,2,Specific Complaint | Generic Good,Pricing & Value | Privacy & Permissions,2
+play_892458f0-7238-4b51-8b5e-1dbbcf5e5ecf,android,1,Specific Complaint,Login & Account,1
+play_572aaa8d-4a8c-4881-87f3-99e219e9a951,android,3,Generic Bad,,2
+play_1664e952-91af-4f03-9ac3-f46930d45acb,android,3,Specific Complaint,Bugs & Stability,2
+play_bb23a2be-0b3a-4b57-be61-15fa1047d0e7,android,3,Specific Complaint,Answer Accuracy,3
+play_41fc2ffb-2760-48d9-b1f3-0af738859ab1,android,3,Specific Complaint,Bugs & Stability,2
+play_90601662-8871-47e6-9594-0ea5caf7caa3,android,3,Specific Praise | Specific Complaint,Search & Sources | Threads & History,3
+play_4d67dcf1-22ff-44c7-8b52-c83696601863,android,3,Specific Complaint,UI / UX | Images & Files,2
+play_171482a6-f343-4520-9d71-f7e98169d3b6,android,3,Specific Complaint,Pricing & Value | Credits & Paid Limits,2
+play_3dab726d-ef1d-4aab-8a19-3a95315f4f99,android,3,Feature Request,Computer & Agents | Free Limits & Paywall,3
+play_ea01694a-ba7d-4357-98ff-d2177873031c,android,3,Feature Request,Pricing & Value,3
+play_a16b2f68-793c-4fd3-aa12-4d972ef9caa3,android,3,Specific Complaint,Speed,3
+play_eb52f19b-faa6-4753-9325-06e474db8c81,android,3,Feature Request | Generic Good,Answer Style & Filters,4
+play_4e2a7a92-2d17-4294-9948-bf8100dd5ba4,android,3,Feature Request | Generic Good,Free Limits & Paywall | Images & Files,4
+play_c0b1897d-a2df-470e-a656-9297c6edaec3,android,3,Specific Complaint,Threads & History,2
+play_0a297f67-e1dd-423e-9302-52f08ecfc866,android,5,Specific Praise,Search & Sources | Speed,5
+play_05530cff-aa52-435a-bb18-d72d25342080,android,5,Specific Praise,Model Choice,5
+play_1da62974-e9e8-4c24-a0eb-f5ac56ffae9e,android,4,Feature Request | Generic Good,Free Limits & Paywall,4
+play_b9c16e4a-59d4-44ee-a0a2-7f4ef1795661,android,5,Specific Praise,Search & Sources | Answer Accuracy,5
+play_f88cef69-0bf9-48ac-97e3-4c11ee8a8698,android,5,Specific Praise,Search & Sources,5
+play_17382160-713d-473b-9306-bfcc044bbbd3,android,5,Feature Request,Pricing & Value,3
+play_85730d28-85b9-4ccc-b8ce-a546bb2d14f2,android,5,Specific Praise,Use Cases,5
+play_2082ed97-d0cc-4c3f-9872-ae5e238c1ba6,android,5,Specific Praise | Feature Request,Search & Sources | Free Limits & Paywall,4
+play_ec167dc0-e724-4015-a95c-6069b97f66d7,android,4,Specific Praise,Use Cases,5
+play_9dcbe7bb-0bc9-44b1-82f6-d8c9a345e150,android,5,Specific Praise,UI / UX,5
+play_0022034b-6afd-46d4-9b88-8295426914dd,android,5,Specific Praise,UI / UX,5
+play_ddce174a-ee0d-4bfd-b96c-0e3a72616c3d,android,5,Specific Praise,Speed,4
+play_2b286f86-a806-4994-b875-1eda08eda7ed,android,5,Specific Complaint | Generic Good,Pricing & Value,4
+play_a65e0b0a-4e74-4582-bc4d-73abe97dd78a,android,5,Specific Praise,Search & Sources,5
+play_0b90cf76-bf33-49e5-883c-72aebc8b64be,android,5,Specific Praise,Use Cases,5
+play_ed0c8841-1c7c-469a-a6a3-f669a7d7ef9a,android,5,Specific Praise,Search & Sources | Computer & Agents,5
+play_da8a3292-26b1-4cae-90e3-780235eb2cab,android,4,Specific Praise | Feature Request,Speed | Free Limits & Paywall,4
+play_9ae2163c-5d7a-4706-ac06-49cab17a4d9f,android,4,Generic Good,,5
+play_1440f069-5a42-4fba-92bf-1d0d8388176b,android,5,Generic Good,,5
+play_6a89c1a8-d92b-49dc-8aa7-9216e0d1fc53,android,5,Nonsense,,3
+play_81176afa-003d-4b3e-9b17-daa48d1c077d,android,5,Generic Good,,5
+play_b845a30f-2208-490b-b762-091f072794c3,android,4,Generic Good,,5
+play_bdc47a15-461f-4260-bfca-0eb5bb023268,android,5,Generic Good,,4
+play_6f166986-ab55-435b-bb66-43c4b89a9b9b,android,5,Generic Good,,5
+play_f6218b09-c96e-4be8-941b-e69a4c0c09c9,android,5,Specific Praise,Answer Accuracy,5
+play_4db4400e-4a78-42b4-86c0-f6e697a8c1f7,android,5,Generic Good,,4
+play_24b02b0e-91b3-43d3-b572-d5d4d7f7c027,android,1,Generic Bad,,1
+play_aeab28c8-2439-48af-8d10-6a98edb0f89c,android,1,Generic Bad,,1
+play_c18a8e10-c626-425d-b308-7a7df83890d3,android,4,Specific Complaint,Answer Accuracy,2
+play_b5d40cd5-497b-4a36-b7df-0886faf11559,android,5,Generic Good,,4
+play_11c5f9a1-8ff5-4afe-b7c2-15d404aa461d,android,5,Generic Good,,4
+play_5b99e8e2-b0bd-4dc6-b6dd-e50ce2e5ff6e,android,5,Generic Good,,3
+play_2d887d6c-c77b-44bc-902a-17189dc077c1,android,5,Specific Praise,Search & Sources,4
+play_181cf9a5-627d-40e7-80cc-e8fbd8bd185b,android,1,Specific Complaint,Free Limits & Paywall | Pricing & Value,2
+play_9a9fcc69-aa73-4303-afe1-02326bab7f00,android,2,Generic Bad,,2
+play_9cb2fa6f-9377-4448-80d5-8a8829b635fb,android,5,Specific Praise,Answer Style & Filters,5
+play_77d3bc3f-bc3c-42e1-bc3e-632b4b3516f6,android,5,Specific Complaint | Generic Good,Answer Style & Filters | Answer Accuracy,3
+play_3336529f-ba99-48a0-97e0-680546894d02,android,1,Specific Complaint,Free Limits & Paywall,2
+play_b4b7c608-72df-420c-864d-bef363b29e47,android,1,Specific Complaint,Credits & Paid Limits,1
+play_6d052fe1-7724-44a0-b3e9-82dffda463c2,android,1,Specific Complaint,Free Limits & Paywall | Images & Files,1
+play_17848219-997e-4bc8-80e0-5e683b05a1c2,android,1,Specific Complaint,Free Limits & Paywall | Answer Accuracy,2
+play_ef1df413-57ea-49e2-bbb6-f6cdd5e79444,android,5,Specific Praise,Use Cases,5
+play_d701d60a-ddbd-4298-8f4b-7637508b2427,android,5,Specific Praise,Search & Sources,5
+play_2efcb047-9f43-43a1-b925-46e9d84c3e38,android,5,Specific Praise,Answer Accuracy,5
+play_15d4ee7f-396c-4abd-baf7-d31d4de73c5e,android,5,Specific Praise,Search & Sources,5
+play_6de4944d-0236-4bd1-b00c-03cc7356f6e8,android,5,Specific Praise,Answer Accuracy | Answer Style & Filters,5
