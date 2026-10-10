@@ -5,7 +5,7 @@ const button = (text, action, className) => { const el = node('button', text, cl
 const scopes = ['all', 'android', 'ios'];
 const platformName = scope => ({all: 'All', android: 'Android', ios: 'iOS'})[scope];
 let summary, insights, ui, reviewPromise, renderEpoch;
-const state = {tab: 'overview', platform: 'all', deepKind: 'labels', deepName: '', deepTopic: '', deepLabel: '', deepStars: '', deepSort: 'helpful', deepPage: null, reviewPage: null, filters: {}, drawer: null, jump: null};
+const state = {tab: 'overview', platform: 'all', deepKind: 'labels', deepName: '', deepTopic: '', deepLabel: '', deepStars: '', deepSort: 'helpful', deepPage: null, reviewPage: null, filters: {}, drawer: null, jump: null, chart: null};
 const nf = (value, digits) => value === null || value === undefined ? 'n/a' : new Intl.NumberFormat('en-US', {maximumFractionDigits: digits ?? ui.zero, minimumFractionDigits: digits ?? ui.zero}).format(value);
 const pct = value => value === null || value === undefined ? 'n/a' : `${nf(value)}%`;
 const dateText = value => new Date(value).toLocaleDateString('en-US', {year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC'});
@@ -36,6 +36,7 @@ function hashState() {
   const platform = params.get('platform');
   state.tab = ['overview', 'deep-dive', 'opportunities', 'reviews'].includes(tab) ? tab : 'overview';
   state.platform = scopes.includes(platform) ? platform : 'all';
+  state.chart = state.tab === 'overview' ? params.get('chart') : null;
   if (state.tab === 'deep-dive') {
     const previousKind = state.deepKind, previousName = state.deepName;
     state.deepKind = ['labels', 'categories'].includes(params.get('mode')) ? params.get('mode') : 'labels';
@@ -98,6 +99,43 @@ const short = (text, limit = 26) => { if (text.length <= limit) return text; con
 // A link to one category's page in Deep Dive, in the same form navigate() writes.
 const categoryLink = name => ({name, href: `#deep-dive?${new URLSearchParams({platform: state.platform, mode: 'categories', group: name}).toString().replaceAll('+', '%20')}`, label: `Read the ${name} reviews in Deep Dive`});
 const CALLOUT_TOKEN = {c_money: '--complaint', c_accuracy: '--complaint', c_regression: '--complaint'};
+// A link to one chart on the Overview page. The href reopens the page at that chart; a plain click scrolls there without a reload.
+const chartHref = id => `#overview?${new URLSearchParams({platform: state.platform, chart: id})}`;
+function jumpToChart(id) { const target = document.getElementById(`chart-${id}`); if (!target) return; target.classList.add('highlight'); setTimeout(() => target.classList.remove('highlight'), 2400); target.scrollIntoView({block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}); const heading = target.querySelector('h3'); heading.tabIndex = -1; heading.focus({preventScroll: true}); }
+function takeaways(data, weeks, categories) {
+  const s = data.stats, L = data.labels, r2 = value => nf(value, ui.rating_digits), points = [];
+  const [praiseLabel, complaintLabel] = ['Specific Praise', 'Specific Complaint'];
+  const five = data.ratings.find(r => r.value === ui.rating_max);
+  if (five) points.push({chart: 'stars-sentiment', see: 'Stars vs sentiment', title: s.avg_rating > s.avg_sentiment ? 'Stars run warmer than the words' : 'The words run warmer than the stars',
+    text: `${share(five.stars, s.count)} of reviews give ${ui.rating_max} stars; ${share(five.sentiment, s.sentiment_n)} read as a ${ui.rating_max} from the text alone. Average stars are ${r2(s.avg_rating)}, average sentiment is ${r2(s.avg_sentiment)}.`});
+  if (weeks.length > 1) {
+    const stars = weeks.map(w => w.avg_rating), volumes = weeks.map(w => w.volume), low = Math.min(...stars), high = Math.max(...stars), fewest = Math.min(...volumes);
+    points.push({chart: 'weekly', see: 'Volume and rating by week', title: high - low < 0.25 ? `Rating held steady for ${weeks.length} weeks` : `Weekly rating moved by ${r2(high - low)} stars`,
+      text: `Weekly average stars ranged from ${r2(low)} to ${r2(high)} across ${weeks.length} complete weeks, on ${nf(fewest)} to ${nf(Math.max(...volumes))} reviews a week.${fewest < ui.hundred ? ' Weekly samples are small here, so read the swings with care.' : ''}`});
+  }
+  const byComplaints = [...categories].sort((a, b) => b.by_label[complaintLabel] - a.by_label[complaintLabel] || a.name.localeCompare(b.name)), [first, second] = byComplaints;
+  if (second) points.push({chart: 'about', see: 'What reviews are about', title: `${first.name} draws the most complaints`,
+    text: `${nf(first.by_label[complaintLabel])} of its ${nf(first.count)} reviews are complaints (${share(first.by_label[complaintLabel], first.count)}). ${second.name} follows with ${nf(second.by_label[complaintLabel])}${second.by_label[praiseLabel] > second.by_label[complaintLabel] ? `, though it earns more praise (${nf(second.by_label[praiseLabel])})` : ''}.`});
+  const rated = categories.filter(c => c.avg_rating !== null && !isSmall(c)).sort((a, b) => b.avg_rating - a.avg_rating), below = rated.filter(c => c.avg_rating < ui.weekly_rating_min);
+  if (rated.length > 1) { const best = rated.at(0), worst = rated.at(-1);
+    points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: `${below.length} of ${rated.length} categories average below ${ui.weekly_rating_min} stars`,
+      text: `${best.name} leads at ${r2(best.avg_rating)} stars (${countNote(best.count)}). ${worst.name} is lowest at ${r2(worst.avg_rating)} (${countNote(worst.count)}). Categories under ${nf(ui.small_category)} reviews are left out of this count.`}); }
+  const [high, low] = ['ios', 'android'].sort((a, b) => summary[b].labels[complaintLabel].pct_of_scope - summary[a].labels[complaintLabel].pct_of_scope), hi = summary[high], lo = summary[low];
+  if (hi.stats.count && lo.labels[complaintLabel].count) points.push({chart: 'platform-mix', see: 'Label mix by platform', title: `Specific complaints are ${nf(hi.labels[complaintLabel].pct_of_scope / lo.labels[complaintLabel].pct_of_scope, 1)}× as common on ${platformName(high)}`,
+    text: `${nf(hi.labels[complaintLabel].pct_of_scope)}% of ${platformName(high)} reviews are specific complaints, against ${nf(lo.labels[complaintLabel].pct_of_scope)}% on ${platformName(low)}. ${platformName(high)} averages ${r2(hi.stats.avg_rating)} stars (${countNote(hi.stats.count)}); ${platformName(low)} averages ${r2(lo.stats.avg_rating)} (${countNote(lo.stats.count)}).`});
+  const rivals = data.competitors.filter(c => c.count && c.name !== 'Other').sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  if (rivals.length > 1) { const [top, next] = rivals, lowStars = top.star_counts[0] + top.star_counts[1];
+    points.push({chart: 'competitors', see: 'Competitors named', title: `${top.name} is the rival reviewers name most`,
+      text: `${top.name} comes up in ${nf(top.count)} reviews, ahead of ${next.name} (${nf(next.count)}). ${share(lowStars, top.count)} of the reviews naming ${top.name} give Perplexity 1 or 2 stars, against ${pct(s.pct_low_star)} of all ${state.platform === 'all' ? '' : `${platformName(state.platform)} `}reviews.`}); }
+  const list = node('ol', undefined, 'key-points');
+  points.forEach((point, index) => {
+    const item = node('li', undefined, 'key-point'), link = node('a', undefined, 'key-point-link');
+    link.href = chartHref(point.chart); link.append(node('span', `See chart: ${point.see}`), icon('arrow'));
+    link.addEventListener('click', event => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); jumpToChart(point.chart); });
+    item.append(node('p', String(index + 1).padStart(2, '0'), 'key-point-index'), node('h3', point.title), node('p', point.text), link); list.append(item);
+  });
+  return list;
+}
 function overview() {
   const root = node('div'); const data = current(), s = data.stats, L = data.labels;
   const band = node('div', undefined, 'stat-band');
@@ -122,7 +160,7 @@ function overview() {
     {name: 'Complaints', start: 0, end: sc, token: '--complaint', strength: 1, value: sc},
     {name: 'Requests', start: 0, end: fr, token: '--request', strength: 1, value: fr},
   ];
-  lead.append(chartCard({span: 7, kind: 'waterfall', height: 440, title: 'Where the signal is',
+  lead.append(chartCard({id: 'signal', span: 7, kind: 'waterfall', height: 440, title: 'Where the signal is',
     subtitle: `By first label · ${share(sub, s.count)} of reviews say something specific, and everything below rests on them`,
     data: {steps}, table: {columns: ['Step', 'Reviews', 'Share of all'], rows: steps.map(st => [st.name, `${st.sign || ''}${nf(st.value)}`, share(st.value, s.count)])}}));
   const briefing = node('section', undefined, 'briefing span-5'); briefing.append(node('h3', 'What stands out'));
@@ -134,9 +172,12 @@ function overview() {
   }
   lead.append(briefing); root.append(lead);
 
-  const weeks = data.weekly, weekLabels = weeks.map(w => new Date(w.week).toLocaleDateString('en-US', {month: 'short', day: 'numeric', timeZone: 'UTC'}));
+  const weeks = data.weekly;
+  root.append(sectionHeading('Key takeaways', `${platformName(state.platform)} · each one links to the chart behind it`), takeaways(data, weeks, categoryEntries(data.categories)));
+
+  const weekLabels = weeks.map(w => new Date(w.week).toLocaleDateString('en-US', {month: 'short', day: 'numeric', timeZone: 'UTC'}));
   const trend = node('div', undefined, 'grid');
-  trend.append(chartCard({span: 12, kind: 'combo', height: 340, title: 'Volume and rating by week',
+  trend.append(chartCard({id: 'weekly', span: 12, kind: 'combo', height: 340, title: 'Volume and rating by week',
     subtitle: `Bars count reviews on the left axis; lines show average stars and sentiment on the right, fixed at 1 to 5 · complete weeks, Monday start · ${countNote(s.weekly_n)}`,
     data: {labels: weekLabels, volume: weeks.map(w => w.volume), stars: weeks.map(w => w.avg_rating), sentiment: weeks.map(w => w.avg_sentiment)},
     table: {columns: ['Week of', 'Reviews', 'Average stars', 'Average sentiment'], rows: weeks.map((w, i) => [weekLabels[i], nf(w.volume), nf(w.avg_rating, ui.rating_digits), nf(w.avg_sentiment, ui.rating_digits)])}}));
@@ -154,7 +195,7 @@ function overview() {
     data: {segments: moodSegments, center: share(moodSegments[0].value, s.sentiment_n), caption: 'positive'},
     legend: moodSegments.map(seg => ({token: seg.token, name: seg.name, value: nf(seg.value), share: share(seg.value, s.sentiment_n)})),
     table: {columns: ['Sentiment', 'Reviews', 'Share'], rows: moodSegments.map(seg => [seg.name, nf(seg.value), share(seg.value, s.sentiment_n)])}}));
-  mood.append(chartCard({span: 4, kind: 'groupedBars', height: 360, title: 'Stars vs sentiment', subtitle: 'Reviews at each score. Stars pile up at 5; the words are more measured',
+  mood.append(chartCard({id: 'stars-sentiment', span: 4, kind: 'groupedBars', height: 360, title: 'Stars vs sentiment', subtitle: 'Reviews at each score. Stars pile up at 5; the words are more measured',
     data: {labels: data.ratings.map(r => String(r.value)), series: [{name: 'Stars given', token: '--stars', values: data.ratings.map(r => r.stars)}, {name: 'Sentiment of text', token: '--sentiment', values: data.ratings.map(r => r.sentiment)}]},
     table: {columns: ['Score', 'Stars given', 'Sentiment of text'], rows: data.ratings.map(r => [String(r.value), nf(r.stars), nf(r.sentiment)])}}));
   root.append(sectionHeading('The mood'), mood);
@@ -163,7 +204,7 @@ function overview() {
   const satisfaction = [...categories].filter(c => c.avg_rating !== null).sort((a, b) => b.avg_rating - a.avg_rating);
   const [praiseLabel, complaintLabel, requestLabel] = ['Specific Praise', 'Specific Complaint', 'Feature Request'];
   const topics = node('div', undefined, 'grid');
-  topics.append(chartCard({span: 7, kind: 'stackedBars', height: rowsHeight(categories.length), title: 'What reviews are about',
+  topics.append(chartCard({id: 'about', span: 7, kind: 'stackedBars', height: rowsHeight(categories.length), title: 'What reviews are about',
     subtitle: `Reviews per category, split by their first label · a review with two categories counts in both · ${countNote(s.substantive)} substantive · select a category to read its reviews`,
     links: categories.map(c => categoryLink(c.name)),
     data: {linked: true, labels: categories.map(categoryLabel), faded: categories.map(isSmall), series: [
@@ -171,7 +212,7 @@ function overview() {
       {name: 'Requests', token: '--request', values: categories.map(c => c.by_label[requestLabel])},
       {name: 'Complaints', token: '--complaint', values: categories.map(c => c.by_label[complaintLabel])}]},
     table: {columns: ['Category', 'Praise', 'Requests', 'Complaints', 'Total'], rows: categories.map(c => [c.name, nf(c.by_label[praiseLabel]), nf(c.by_label[requestLabel]), nf(c.by_label[complaintLabel]), nf(c.count)])}}));
-  topics.append(chartCard({span: 5, kind: 'diverging', height: rowsHeight(satisfaction.length), title: 'Satisfaction by category',
+  topics.append(chartCard({id: 'satisfaction', span: 5, kind: 'diverging', height: rowsHeight(satisfaction.length), title: 'Satisfaction by category',
     subtitle: `Mean stars, drawn from the midpoint of ${ui.weekly_rating_min}.0 · right is above, left is below · select a category to read its reviews`,
     links: satisfaction.map(c => categoryLink(c.name)),
     data: {linked: true, labels: satisfaction.map(categoryLabel), values: satisfaction.map(c => c.avg_rating), center: ui.weekly_rating_min, faded: satisfaction.map(isSmall), notes: satisfaction.map(c => countNote(c.count))},
@@ -180,7 +221,7 @@ function overview() {
 
   const platforms = scopes.filter(p => p !== 'all');
   const compare = node('div', undefined, 'grid');
-  compare.append(chartCard({span: 6, kind: 'stackedBars', height: 210, title: 'Label mix by platform', subtitle: 'Share of each first label · always shows both platforms',
+  compare.append(chartCard({id: 'platform-mix', span: 6, kind: 'stackedBars', height: 210, title: 'Label mix by platform', subtitle: 'Share of each first label · always shows both platforms',
     data: {percent: true, labels: platforms.map(p => `${platformName(p)} (${countNote(summary[p].stats.count)})`), series: LABEL_ORDER.map(name => ({name, token: colorForLabel(name), values: platforms.map(p => summary[p].labels[name].pct_of_scope)}))},
     table: {columns: ['Label', ...platforms.map(platformName)], rows: LABEL_ORDER.map(name => [name, ...platforms.map(p => `${nf(summary[p].labels[name].pct_of_scope, 1)}% (${nf(summary[p].labels[name].count)})`)])}}));
   const mismatch = node('section', undefined, 'chart-card span-6'); const mismatchHead = node('div', undefined, 'chart-header'), mismatchTitle = node('div');
@@ -205,7 +246,7 @@ function overview() {
   const competitors = [...data.competitors].filter(c => c.count).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   const band3 = c => [c.star_counts[0] + c.star_counts[1], c.star_counts[2], c.star_counts[3] + c.star_counts[4]];
   const context = node('div', undefined, 'grid');
-  context.append(chartCard({span: 7, kind: 'stackedBars', height: rowsHeight(competitors.length, 30, 80), title: 'Competitors named',
+  context.append(chartCard({id: 'competitors', span: 7, kind: 'stackedBars', height: rowsHeight(competitors.length, 30, 80), title: 'Competitors named',
     subtitle: 'Reviews that name another product, split by the stars the reviewer gave Perplexity',
     data: {labels: competitors.map(c => c.name), series: [{name: '4 to 5 stars', token: '--praise', values: competitors.map(c => band3(c)[2])}, {name: '3 stars', token: '--neutral', values: competitors.map(c => band3(c)[1])}, {name: '1 to 2 stars', token: '--complaint', values: competitors.map(c => band3(c)[0])}]},
     table: {columns: ['Competitor', '4 to 5 stars', '3 stars', '1 to 2 stars', 'Total'], rows: competitors.map(c => [c.name, nf(band3(c)[2]), nf(band3(c)[1]), nf(band3(c)[0]), nf(c.count)])}}));
@@ -377,6 +418,7 @@ async function renderPage() {
     if (epoch !== renderEpoch) return; $('#content').replaceChildren(view); restoreFocus($('#content'), focus);
     // Arriving from a category link on a chart: start at the top of that category's page, with focus on its name.
     if (state.fromLink && state.tab === 'deep-dive') { state.fromLink = false; window.scrollTo({top: ui.zero}); const heading = $('#content .detail-header h2'); if (heading) { heading.tabIndex = -1; heading.focus({preventScroll: true}); } }
+    if (state.chart && state.tab === 'overview') { jumpToChart(state.chart); state.chart = null; }
     if (state.drawer) await renderDrawer();
     if (state.jump && state.tab === 'opportunities') { const target = document.getElementById(`insight-${state.jump}`); jumpToInsight(state.jump); state.jump = null; }
   } catch (error) { if (epoch === renderEpoch) $('#content').replaceChildren(errorView(error)); }

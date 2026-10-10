@@ -331,6 +331,7 @@ function linkRows(entry, config) {
 //   links: [{name, href, label}] one per row of a horizontal bar chart, in row order}
 export function chartCard(model) {
   const card = node('section', undefined, `chart-card${model.span ? ` span-${model.span}` : ''}`);
+  if (model.id) card.id = `chart-${model.id}`;
   const header = node('div', undefined, 'chart-header');
   const heading = node('div'); heading.append(node('h3', model.title), node('p', model.subtitle));
   const toggle = node('button', 'View as table', 'table-toggle'); toggle.type = 'button'; toggle.setAttribute('aria-pressed', 'false');
