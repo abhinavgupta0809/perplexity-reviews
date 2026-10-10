@@ -282,3 +282,10 @@ body.drawer-open { overflow: hidden; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Category links on charts: a real link over each row label, and linked names in the table view. */
+.row-link { position: absolute; left: 0; display: block; border-radius: 6px; }
+.row-link:hover, .row-link:focus-visible { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.table-wrap td a { color: var(--brand); font-weight: 500; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--brand) 40%, transparent); text-underline-offset: 3px; }
+.table-wrap td a:hover { text-decoration-color: var(--brand); }
+.detail-header h2:focus { outline: none; }

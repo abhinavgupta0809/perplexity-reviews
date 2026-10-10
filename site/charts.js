@@ -28,7 +28,8 @@ function theme() {
   return {text1: css('--text-1'), text2: css('--text-2'), text3: css('--text-3'), border: css('--border'), surface: css('--surface'), raised: css('--raised')};
 }
 function tick(t) { return {color: t.text3, font: {family: mono(), size: 11}}; }
-function catTick(t) { return {color: t.text2, font: {family: sans(), size: 12}, autoSkip: false}; }
+// linked: the row labels are links (see chartCard), so they take the link color.
+function catTick(t, linked = false) { return {color: linked ? css('--brand') : t.text2, font: {family: sans(), size: 12, weight: linked ? '500' : '400'}, autoSkip: false}; }
 function tooltip(t, callbacks) {
   return {backgroundColor: t.raised, titleColor: t.text1, bodyColor: t.text2, footerColor: t.text3, borderColor: t.border, borderWidth: 1,
     padding: 10, cornerRadius: 8, boxPadding: 4, usePointStyle: true,
@@ -132,14 +133,14 @@ export const builders = {
   },
 
   // Horizontal stack. series: [{name, token, values}]. percent: values are shares of 100.
-  stackedBars({labels, series, percent = false, faded = [], totals = true, notes = []}) {
+  stackedBars({labels, series, percent = false, faded = [], totals = true, notes = [], linked = false}) {
     const t = theme();
     const plugins = totals && !percent ? [endLabels(t, v => int(v), {stackTotal: true})] : [];
     return {type: 'bar', plugins, data: {labels: labels.map(l => wrapLabel(l)), datasets: series.map(s => ({label: s.name, data: s.values,
       backgroundColor: labels.map((_, i) => fade(css(s.token), faded[i] ? 0.45 : 1)), borderColor: t.surface, borderWidth: {left: 0, right: 2, top: 0, bottom: 0}, borderRadius: 3, borderSkipped: false, maxBarThickness: 26}))},
     options: base(t, {indexAxis: 'y', layout: {padding: {right: totals && !percent ? 52 : 4}}, scales: {
       x: {stacked: true, beginAtZero: true, max: percent ? 100 : undefined, grid: {color: fade(t.border, 0.7)}, border: {display: false}, ticks: {...tick(t), callback: v => percent ? `${v}%` : int(v)}},
-      y: {stacked: true, grid: {display: false}, border: {display: false}, ticks: catTick(t)}},
+      y: {stacked: true, grid: {display: false}, border: {display: false}, ticks: catTick(t, linked)}},
       plugins: {legend: legend(t), tooltip: tooltip(t, {label: c => ` ${c.dataset.label}: ${percent ? `${dec(c.parsed.x, 1)}%` : int(c.parsed.x)}`, footer: items => notes[items[0].dataIndex] || ''})}})};
   },
 
@@ -155,14 +156,14 @@ export const builders = {
   },
 
   // Bars growing left or right from a center value.
-  diverging({labels, values, center, faded = [], notes = []}) {
+  diverging({labels, values, center, faded = [], notes = [], linked = false}) {
     const t = theme(), up = css('--praise'), down = css('--complaint');
     const centerLine = {id: 'centerLine', afterDatasetsDraw(chart) { const x = chart.scales.x.getPixelForValue(center), a = chart.chartArea, ctx = chart.ctx; ctx.save(); ctx.strokeStyle = t.text3; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, a.top); ctx.lineTo(x, a.bottom); ctx.stroke(); ctx.restore(); }};
     return {type: 'bar', plugins: [centerLine, endLabels(t, v => dec(v), {diverging: center})], data: {labels: labels.map(l => wrapLabel(l)), datasets: [{label: 'Mean stars', data: values.map(v => v === null ? null : [center, v]),
       backgroundColor: values.map((v, i) => fade(v >= center ? up : down, faded[i] ? 0.45 : 1)), borderRadius: 4, borderSkipped: false, maxBarThickness: 22}]},
     options: base(t, {indexAxis: 'y', layout: {padding: {right: 44, left: 4}}, scales: {
       x: {min: 1, max: 5, grid: {color: fade(t.border, 0.7)}, border: {display: false}, ticks: {...tick(t), stepSize: 1, callback: v => v.toFixed(1)}},
-      y: {grid: {display: false}, border: {display: false}, ticks: catTick(t)}},
+      y: {grid: {display: false}, border: {display: false}, ticks: catTick(t, linked)}},
       plugins: {legend: {display: false}, tooltip: tooltip(t, {label: c => ` Mean stars: ${dec(values[c.dataIndex])}`, footer: items => notes[items[0].dataIndex] || ''})}})};
   },
 
@@ -301,11 +302,33 @@ function render(entry, animate = true) {
   if (!window.Chart) { entry.message.hidden = false; return; }
   entry.message.hidden = true;
   const config = builders[entry.model.kind](entry.model.data);
+  if (entry.anchors) linkRows(entry, config);
   if (!animate) config.options.animation = false;
   entry.chart = new window.Chart(entry.canvas, config);
 }
 
-// model: {title, subtitle, kind, data, height, table: {columns, rows}, legend: [{token, name, value, share}], span}
+// Row links for horizontal bar charts. Each row's label is covered by a real <a>, kept in place as the
+// chart lays out, so it works with the keyboard and opens in a new tab like any link. A click on the bar
+// itself follows the same link; the bars keep their tooltips.
+function linkRows(entry, config) {
+  const rowAt = (event, chart) => {
+    const a = chart.chartArea; if (event.y < a.top || event.y > a.bottom) return -1;
+    const index = Math.round(chart.scales.y.getValueForPixel(event.y));
+    return index >= 0 && index < entry.anchors.length ? index : -1;
+  };
+  config.plugins = [...(config.plugins || []), {id: 'rowLinks', afterDraw(chart) {
+    const a = chart.chartArea, band = (a.bottom - a.top) / entry.anchors.length;
+    entry.anchors.forEach((anchor, index) => {
+      const middle = chart.scales.y.getPixelForValue(index);
+      anchor.style.top = `${middle - band / 2 + 1}px`; anchor.style.height = `${band - 2}px`; anchor.style.width = `${Math.max(0, a.left - 4)}px`;
+    });
+  }}];
+  config.options.onClick = (event, items, chart) => { const index = rowAt(event, chart); if (index >= 0) entry.anchors[index].click(); };
+  config.options.onHover = (event, items, chart) => { event.native.target.style.cursor = rowAt(event, chart) >= 0 ? 'pointer' : 'default'; };
+}
+
+// model: {title, subtitle, kind, data, height, table: {columns, rows}, legend: [{token, name, value, share}], span,
+//   links: [{name, href, label}] one per row of a horizontal bar chart, in row order}
 export function chartCard(model) {
   const card = node('section', undefined, `chart-card${model.span ? ` span-${model.span}` : ''}`);
   const header = node('div', undefined, 'chart-header');
@@ -315,6 +338,7 @@ export function chartCard(model) {
   const body = node('div', undefined, model.legend ? `chart-body split${model.stack ? ' stacked' : ''}` : 'chart-body');
   const wrap = node('div', undefined, 'chart-wrap'); wrap.style.height = `${model.height || 280}px`;
   const canvas = node('canvas'); canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', `${model.title}. Use View as table for the values.`); wrap.append(canvas); body.append(wrap);
+  const anchors = (model.links || []).map(link => { const anchor = node('a', undefined, 'row-link'); anchor.href = link.href; anchor.dataset.deepLink = ''; anchor.title = link.label; anchor.setAttribute('aria-label', link.label); wrap.append(anchor); return anchor; });
   if (model.legend) {
     const list = node('ul', undefined, 'legend-list');
     for (const item of model.legend) { const row = node('li'); const dot = node('span', undefined, 'dot'); dot.style.background = `var(${item.token})`; const name = node('span', undefined, 'legend-name'); name.append(dot, node('span', item.name)); row.append(name, node('span', item.value, 'num'), node('span', item.share, 'num share')); list.append(row); }
@@ -324,11 +348,11 @@ export function chartCard(model) {
   const tableWrap = node('div', undefined, 'table-wrap'); tableWrap.hidden = true;
   const table = node('table'); table.append(node('caption', model.title, 'sr-only'));
   const head = node('thead'), headRow = node('tr'); for (const column of model.table.columns) { const th = node('th', column); th.scope = 'col'; headRow.append(th); } head.append(headRow);
-  const rows = node('tbody'); for (const values of model.table.rows) { const row = node('tr'); values.forEach((value, i) => row.append(node('td', value, i ? 'num' : undefined))); rows.append(row); }
+  const rows = node('tbody'); for (const values of model.table.rows) { const row = node('tr'); values.forEach((value, i) => { const cell = node('td', i || !model.links ? value : undefined, i ? 'num' : undefined); if (!i && model.links) { const link = model.links.find(l => l.name === value); if (link) { const anchor = node('a', value); anchor.href = link.href; anchor.dataset.deepLink = ''; cell.append(anchor); } else cell.textContent = value; } row.append(cell); }); rows.append(row); }
   table.append(head, rows); tableWrap.append(table);
   toggle.addEventListener('click', () => { const show = tableWrap.hidden; tableWrap.hidden = !show; body.hidden = show; message.hidden = show || !!window.Chart; toggle.textContent = show ? 'View as chart' : 'View as table'; toggle.setAttribute('aria-pressed', String(show)); });
   card.append(header, body, message, tableWrap);
-  const entry = {canvas, model, message}; active.add(entry);
+  const entry = {canvas, model, message, anchors: anchors.length ? anchors : null}; active.add(entry);
   requestAnimationFrame(() => { if (canvas.isConnected) render(entry); });
   return card;
 }

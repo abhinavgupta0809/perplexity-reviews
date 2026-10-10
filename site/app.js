@@ -95,6 +95,8 @@ const categoryLabel = entry => isSmall(entry) ? `${entry.name} (n<${nf(ui.small_
 const share = (part, whole) => whole ? `${Math.round(part / whole * 100)}%` : 'n/a';
 const rowsHeight = (count, row = 30, pad = 70) => Math.max(200, count * row + pad);
 const short = (text, limit = 26) => { if (text.length <= limit) return text; const cut = text.slice(0, limit); return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 12))}…`; };
+// A link to one category's page in Deep Dive, in the same form navigate() writes.
+const categoryLink = name => ({name, href: `#deep-dive?${new URLSearchParams({platform: state.platform, mode: 'categories', group: name}).toString().replaceAll('+', '%20')}`, label: `Read the ${name} reviews in Deep Dive`});
 const CALLOUT_TOKEN = {c_money: '--complaint', c_accuracy: '--complaint', c_regression: '--complaint'};
 function overview() {
   const root = node('div'); const data = current(), s = data.stats, L = data.labels;
@@ -162,15 +164,17 @@ function overview() {
   const [praiseLabel, complaintLabel, requestLabel] = ['Specific Praise', 'Specific Complaint', 'Feature Request'];
   const topics = node('div', undefined, 'grid');
   topics.append(chartCard({span: 7, kind: 'stackedBars', height: rowsHeight(categories.length), title: 'What reviews are about',
-    subtitle: `Reviews per category, split by their first label · a review with two categories counts in both · ${countNote(s.substantive)} substantive`,
-    data: {labels: categories.map(categoryLabel), faded: categories.map(isSmall), series: [
+    subtitle: `Reviews per category, split by their first label · a review with two categories counts in both · ${countNote(s.substantive)} substantive · select a category to read its reviews`,
+    links: categories.map(c => categoryLink(c.name)),
+    data: {linked: true, labels: categories.map(categoryLabel), faded: categories.map(isSmall), series: [
       {name: 'Praise', token: '--praise', values: categories.map(c => c.by_label[praiseLabel])},
       {name: 'Requests', token: '--request', values: categories.map(c => c.by_label[requestLabel])},
       {name: 'Complaints', token: '--complaint', values: categories.map(c => c.by_label[complaintLabel])}]},
     table: {columns: ['Category', 'Praise', 'Requests', 'Complaints', 'Total'], rows: categories.map(c => [c.name, nf(c.by_label[praiseLabel]), nf(c.by_label[requestLabel]), nf(c.by_label[complaintLabel]), nf(c.count)])}}));
   topics.append(chartCard({span: 5, kind: 'diverging', height: rowsHeight(satisfaction.length), title: 'Satisfaction by category',
-    subtitle: `Mean stars, drawn from the midpoint of ${ui.weekly_rating_min}.0 · right is above, left is below`,
-    data: {labels: satisfaction.map(categoryLabel), values: satisfaction.map(c => c.avg_rating), center: ui.weekly_rating_min, faded: satisfaction.map(isSmall), notes: satisfaction.map(c => countNote(c.count))},
+    subtitle: `Mean stars, drawn from the midpoint of ${ui.weekly_rating_min}.0 · right is above, left is below · select a category to read its reviews`,
+    links: satisfaction.map(c => categoryLink(c.name)),
+    data: {linked: true, labels: satisfaction.map(categoryLabel), values: satisfaction.map(c => c.avg_rating), center: ui.weekly_rating_min, faded: satisfaction.map(isSmall), notes: satisfaction.map(c => countNote(c.count))},
     table: {columns: ['Category', 'Mean stars', 'Reviews'], rows: satisfaction.map(c => [c.name, nf(c.avg_rating, ui.rating_digits), nf(c.count)])}}));
   root.append(sectionHeading('What people talk about', `${platformName(state.platform)} · ${countNote(s.substantive)} substantive reviews`), topics);
 
@@ -371,6 +375,8 @@ async function renderPage() {
   try {
     const view = state.tab === 'overview' ? overview() : state.tab === 'opportunities' ? opportunities() : state.tab === 'deep-dive' ? await deepDive() : await reviewsTab();
     if (epoch !== renderEpoch) return; $('#content').replaceChildren(view); restoreFocus($('#content'), focus);
+    // Arriving from a category link on a chart: start at the top of that category's page, with focus on its name.
+    if (state.fromLink && state.tab === 'deep-dive') { state.fromLink = false; window.scrollTo({top: ui.zero}); const heading = $('#content .detail-header h2'); if (heading) { heading.tabIndex = -1; heading.focus({preventScroll: true}); } }
     if (state.drawer) await renderDrawer();
     if (state.jump && state.tab === 'opportunities') { const target = document.getElementById(`insight-${state.jump}`); jumpToInsight(state.jump); state.jump = null; }
   } catch (error) { if (epoch === renderEpoch) $('#content').replaceChildren(errorView(error)); }
@@ -405,6 +411,7 @@ function initControls() {
   const clampObserver = new ResizeObserver(checkReviewClamps);
   clampObserver.observe($('#content')); clampObserver.observe($('#drawer-content'));
   for (const tab of document.querySelectorAll('[data-tab]')) tab.addEventListener('click', () => navigate(tab.dataset.tab));
+  document.addEventListener('click', event => { if (event.target.closest?.('a[data-deep-link]')) state.fromLink = true; });
   $('#tabs').addEventListener('keydown', event => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const tabs = [...document.querySelectorAll('[data-tab]')]; let index = tabs.indexOf(document.activeElement);
     if (event.key === 'Home') index = ui.zero; else if (event.key === 'End') index = tabs.length - ui.one; else index = (index + (event.key === 'ArrowRight' ? ui.one : -ui.one) + tabs.length) % tabs.length;
