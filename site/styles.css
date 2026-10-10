@@ -67,6 +67,8 @@ ul, ol { padding: 0; list-style: none; }
 button, .button, select, input { font: 500 13px/18px var(--font-sans); color: var(--text-1); }
 button, .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); cursor: pointer; text-decoration: none; transition: background-color 0.15s ease-out, border-color 0.15s ease-out, color 0.15s ease-out; }
 button:hover, .button:hover { background: var(--raised); border-color: var(--text-4); }
+.button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.button.primary:hover { background: color-mix(in srgb, var(--accent) 88%, var(--text-1)); border-color: var(--accent); }
 button:disabled { color: var(--text-4); cursor: not-allowed; background: transparent; border-color: var(--border); }
 select, input[type="search"], input[type="date"] { min-height: 40px; width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); caret-color: var(--accent); }
 input::placeholder { color: var(--text-3); }
