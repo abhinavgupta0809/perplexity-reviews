@@ -98,7 +98,6 @@ const rowsHeight = (count, row = 30, pad = 70) => Math.max(200, count * row + pa
 const short = (text, limit = 26) => { if (text.length <= limit) return text; const cut = text.slice(0, limit); return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 12))}…`; };
 // A link to one category's page in Deep Dive, in the same form navigate() writes.
 const categoryLink = name => ({name, href: `#deep-dive?${new URLSearchParams({platform: state.platform, mode: 'categories', group: name}).toString().replaceAll('+', '%20')}`, label: `Read the ${name} reviews in Deep Dive`});
-const CALLOUT_TOKEN = {c_money: '--complaint', c_accuracy: '--complaint', c_regression: '--complaint'};
 // A link to one chart on the Overview page. The href reopens the page at that chart; a plain click scrolls there without a reload.
 const chartHref = id => `#overview?${new URLSearchParams({platform: state.platform, chart: id})}`;
 function jumpToChart(id) { const target = document.getElementById(`chart-${id}`); if (!target) return; target.classList.add('highlight'); setTimeout(() => target.classList.remove('highlight'), 2400); target.scrollIntoView({block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}); const heading = target.querySelector('h3'); heading.tabIndex = -1; heading.focus({preventScroll: true}); }
@@ -160,17 +159,10 @@ function overview() {
     {name: 'Complaints', start: 0, end: sc, token: '--complaint', strength: 1, value: sc},
     {name: 'Requests', start: 0, end: fr, token: '--request', strength: 1, value: fr},
   ];
-  lead.append(chartCard({id: 'signal', span: 7, kind: 'waterfall', height: 440, title: 'Where the signal is',
+  lead.append(chartCard({id: 'signal', span: 12, kind: 'waterfall', height: 360, title: 'Where the signal is',
     subtitle: `By first label · ${share(sub, s.count)} of reviews say something specific, and everything below rests on them`,
     data: {steps}, table: {columns: ['Step', 'Reviews', 'Share of all'], rows: steps.map(st => [st.name, `${st.sign || ''}${nf(st.value)}`, share(st.value, s.count)])}}));
-  const briefing = node('section', undefined, 'briefing span-5'); briefing.append(node('h3', 'What stands out'));
-  for (const item of insights.callouts.filter(i => i.placement === 'overview')) {
-    const scope = item.scopes[state.platform]; if (!scope.stats.count) continue;
-    const row = node('div', undefined, 'brief'), copy = node('div');
-    copy.append(dotted(scope.title, CALLOUT_TOKEN[item.id] || '--accent', 'h4'), node('p', scope.text));
-    row.append(node('p', nf(scope.stats.count), 'brief-figure'), copy); briefing.append(row);
-  }
-  lead.append(briefing); root.append(lead);
+  root.append(lead);
 
   const weeks = data.weekly;
   root.append(sectionHeading('Key takeaways', `${platformName(state.platform)} · each one links to the chart behind it`), takeaways(data, weeks, categoryEntries(data.categories)));
