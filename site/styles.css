@@ -123,6 +123,39 @@ footer p { max-width: 90ch; }
 .key-point-link { margin-top: auto; padding-top: 8px; display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; color: var(--brand); font-size: 13px; font-weight: 500; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--brand) 40%, transparent); text-underline-offset: 3px; }
 .key-point-link:hover { text-decoration-color: var(--brand); }
 .key-point-link .icon { width: 14px; height: 14px; }
+.key-point { gap: 6px; padding: 16px 18px; scroll-margin-top: 90px; transition: border-color 0.2s ease-out, box-shadow 0.2s ease-out; }
+.key-point.highlight { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.key-point h3 { font-size: 14px; line-height: 19px; }
+.key-point h3:focus { outline: none; }
+.key-point > p.key-point-evidence { font-size: 12.5px; line-height: 18px; }
+.key-point .key-point-link { font-size: 12.5px; padding-top: 6px; }
+.key-point-link.secondary { color: var(--text-2); font-weight: 400; font-size: 12.5px; text-decoration-color: color-mix(in srgb, var(--text-3) 50%, transparent); }
+.key-point-link.secondary:hover { color: var(--brand); text-decoration-color: var(--brand); }
+/* Next step disclosure, shared by takeaway cards and opportunity cards */
+.next-step { border-left: 3px solid var(--brand); padding-left: 10px; margin-top: 2px; }
+.next-step summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: var(--brand); font-size: 12.5px; line-height: 18px; font-weight: 600; }
+.next-step summary::-webkit-details-marker { display: none; }
+.next-step summary .icon { width: 12px; height: 12px; transition: transform 0.15s ease-out; }
+.next-step[open] summary .icon { transform: rotate(90deg); }
+.next-step summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.next-step > p { color: var(--text-2); font-size: 12.5px; line-height: 18px; margin-top: 4px; }
+.next-step > .key-point-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
+.next-step > .key-point-link .icon { width: 13px; height: 13px; }
+.opportunity .next-step > p { font-size: 13px; line-height: 19px; }
+/* Start here, under the priority matrix */
+.start-here { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin-top: 16px; }
+.start-here h2 { font-size: 16px; line-height: 22px; }
+.start-here > .muted { font-size: 12px; margin: 2px 0 10px; }
+.start-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.start-head { color: var(--text-3); font-size: 12px; line-height: 16px; }
+.start-head strong { color: var(--text-1); font-weight: 600; font-size: 13px; }
+.start-items { color: var(--text-3); font-size: 13px; line-height: 20px; margin-top: 2px; }
+.start-items a { color: var(--brand); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--brand) 40%, transparent); text-underline-offset: 3px; }
+.start-items a:hover { text-decoration-color: var(--brand); }
+.chart-takeaways { list-style: none; margin: 12px 0 0; padding: 10px 0 0; border-top: 1px solid var(--border); display: grid; gap: 4px; }
+.chart-takeaway { color: var(--text-2); font-size: 12px; line-height: 17px; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--text-3) 50%, transparent); text-underline-offset: 3px; }
+.chart-takeaway:hover { color: var(--brand); text-decoration-color: var(--brand); }
+.chart-takeaway::before { content: "↑ "; color: var(--text-3); text-decoration: none; }
 
 /* Charts */
 .chart-card { display: flex; flex-direction: column; scroll-margin-top: 90px; transition: border-color 0.2s ease-out, box-shadow 0.2s ease-out; }

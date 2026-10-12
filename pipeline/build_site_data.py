@@ -143,14 +143,14 @@ def resolve_insights(source, rows, taxonomy):
             matched = [r for r in rows if matcher(r)]
             if not matched:
                 raise ScrapeError(f'Insight {item["id"]} matches zero reviews in all scope')
-            resolved = {k: v for k, v in item.items() if k not in ('title', 'text', 'desc')}
+            resolved = {k: v for k, v in item.items() if k not in ('title', 'text', 'desc', 'next')}
             resolved['scopes'] = {}
             for scope in SCOPES:
                 subset = [r for r in matched if scope == 'all' or r['platform'] == scope]
                 substantive = sum(bool(r['categories']) for r in rows if scope == 'all' or r['platform'] == scope)
                 stats = statistics(subset, substantive, taxonomy)
                 resolved['scopes'][scope] = {'stats': stats, 'review_ids': [r['review_id'] for r in subset],
-                                           **{k: fill_tokens(item[k], stats) for k in ('title', 'text', 'desc') if k in item}}
+                                           **{k: fill_tokens(item[k], stats) for k in ('title', 'text', 'desc', 'next') if k in item}}
             result[group].append(resolved)
     return result
 

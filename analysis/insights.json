@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Written by Claude from the Oct 9, 2026 annotated corpus. Narrative only. Every number shown on the site comes from running each item's `match` against data/annotated_reviews.csv in build_site_data.py. Tokens in text ({{count}}, {{pct_low_star}}, {{avg_rating}}, {{ios_count}}, {{android_count}}, {{pct_of_substantive}}) are filled from that item's own match.",
+  "about": "Written by Claude from the Oct 9, 2026 annotated corpus. Narrative only. Every number shown on the site comes from running each item's `match` against data/annotated_reviews.csv in build_site_data.py. Tokens in text ({{count}}, {{pct_low_star}}, {{avg_rating}}, {{ios_count}}, {{android_count}}, {{pct_of_substantive}}) are filled from that item's own match. Each improvement, request, and strength also carries a `next` line: the check a PM would run, written by Claude, tokens filled the same way.",
   "match_spec": {
     "labels_any": "review has at least one of these labels",
     "categories_any": "review has at least one of these categories",
@@ -94,7 +94,8 @@
           "Credits & Paid Limits"
         ]
       },
-      "short": "Credits run out"
+      "short": "Credits run out",
+      "next": "Pull credit-balance telemetry for Pro users: what share reach zero before the cycle ends, and on which day. Then test showing the estimated cost before a run starts; the Run Receipt prototype shows one way."
     },
     {
       "id": "i_free_images",
@@ -111,7 +112,8 @@
           "Images & Files"
         ]
       },
-      "short": "One-photo limit"
+      "short": "One-photo limit",
+      "next": "Compare 7-day retention of free users who hit the photo cap in their first session against those who did not. If the capped cohort retains worse, test a higher first-week cap or show the limit before the upload."
     },
     {
       "id": "i_free_questions",
@@ -127,7 +129,8 @@
           "Free Limits & Paywall"
         ]
       },
-      "short": "Free question cap"
+      "short": "Free question cap",
+      "next": "Measure time from install to the first paywall screen for free users, and that screen's conversion rate. If most free users hit it in their first session and few convert, the cap is a retention leak rather than a conversion lever."
     },
     {
       "id": "i_wrong",
@@ -142,7 +145,8 @@
           "Answer Accuracy"
         ]
       },
-      "short": "Wrong answers"
+      "short": "Wrong answers",
+      "next": "Treat these {{count}} reviews as a seed eval set. Group them by failure type (invented fact, stale source, ignored instruction) and measure the current model on each group before deciding whether this is a retrieval or a model problem."
     },
     {
       "id": "i_ignores",
@@ -158,7 +162,8 @@
         ],
         "pattern": "ignor|misunderst|misread|not listen|doesn.t listen|did(n.t| not) understand|does(n.t| not) understand|instruction"
       },
-      "short": "Ignores the ask"
+      "short": "Ignores the ask",
+      "next": "These are the instruction-following slice of the eval set. Replay the exact pattern reviewers describe (an explicit instruction, repeated) against the current model and score it separately from factual accuracy."
     },
     {
       "id": "i_cancel",
@@ -175,7 +180,8 @@
         ],
         "pattern": "cancel|refund|unauthor|charged|charge|unsubscrib|renew"
       },
-      "short": "Cancel and refunds"
+      "short": "Cancel and refunds",
+      "next": "Count cancel attempts that start in the app and end on a store support page. Add a visible cancel path that deep-links to the store subscription screen, and set a refund SLA. {{pct_low_star}} of these reviews are at 1 or 2 stars, so this is the cheapest rating gain on the page."
     },
     {
       "id": "i_promos",
@@ -189,7 +195,8 @@
         ],
         "pattern": "airtel|paypal|samsung|\\btim\\b|revolut|telekom|promo|voucher|coupon|redeem"
       },
-      "short": "Partner offers"
+      "short": "Partner offers",
+      "next": "List active partner promos and what happens when each ends. Add an end-of-promo notice before any charge, and check which partner generates most of these reviews."
     },
     {
       "id": "i_bugs",
@@ -204,7 +211,8 @@
           "Bugs & Stability"
         ]
       },
-      "short": "Broken things"
+      "short": "Broken things",
+      "next": "Join these reviews to app version and device. The topics name failed updates and one device family, so if a single version or device dominates, this is a release or compatibility bug, not general instability."
     },
     {
       "id": "i_style",
@@ -220,7 +228,8 @@
           "Answer Style & Filters"
         ]
       },
-      "short": "Tone and bias"
+      "short": "Tone and bias",
+      "next": "Tag these by sub-type: tone, bias, refusal, length. Refusal and length are prompt and policy settings you can A/B test; tone and bias need a rubric eval before anything changes."
     },
     {
       "id": "i_voice",
@@ -236,7 +245,8 @@
           "Voice & Dictation"
         ]
       },
-      "short": "Voice mode"
+      "short": "Voice mode",
+      "next": "Pull voice session logs for cut-offs and talk-over rate. Several reviews say read-aloud went missing, so check whether it was removed for a cohort or a platform."
     },
     {
       "id": "i_history",
@@ -252,7 +262,8 @@
           "Threads & History"
         ]
       },
-      "short": "Lost chats"
+      "short": "Lost chats",
+      "next": "Measure how often long threads pass the context limit and how often history fails to load. Rename and folders are a steady request; confirm demand with usage of the existing bookmarks before building."
     },
     {
       "id": "i_support",
@@ -268,7 +279,8 @@
           "Customer Support"
         ]
       },
-      "short": "Support"
+      "short": "Support",
+      "next": "Measure time to first human reply on billing tickets and the share closed without a resolution. Most of these overlap with cancel and refund reviews, so one support fix covers both."
     },
     {
       "id": "i_computer",
@@ -282,7 +294,8 @@
         ],
         "pattern": "\\bcomputer\\b"
       },
-      "short": "Computer credits"
+      "short": "Computer credits",
+      "next": "Measure credits per completed Computer task and the share of tasks that end at a zero balance. Show the estimate before the run and a stop point when a task will not finish on the remaining balance."
     },
     {
       "id": "i_models",
@@ -298,7 +311,8 @@
           "Model Choice"
         ]
       },
-      "short": "Model choice"
+      "short": "Model choice",
+      "next": "Audit model routing: when a Pro user picks a model, log whether that model produced the answer. Where it did not, show the rule in the product instead of switching silently."
     },
     {
       "id": "i_login",
@@ -314,7 +328,8 @@
           "Login & Account"
         ]
       },
-      "short": "Sign-in"
+      "short": "Sign-in",
+      "next": "Count sign-in failures by provider, and remove the phone-number requirement from the cancel flow; reviews say it blocks cancellation outright."
     },
     {
       "id": "i_preinstalled",
@@ -330,7 +345,8 @@
           "Privacy & Permissions"
         ]
       },
-      "short": "Preinstalled app"
+      "short": "Preinstalled app",
+      "next": "Compare ratings and retention from preinstall channels (OEM and carrier) against organic installs. If preinstalled users rate lower, treat it as a channel problem and fix the first-open and uninstall paths, not the app."
     }
   ],
   "feature_requests": [
@@ -346,7 +362,8 @@
           "Images & Files",
           "Free Limits & Paywall"
         ]
-      }
+      },
+      "next": "Pair with the one-photo limit above: test a higher first-week upload cap and measure free-to-Pro conversion and 7-day retention, not complaint volume."
     },
     {
       "id": "f_pricing",
@@ -359,7 +376,8 @@
         "categories_any": [
           "Pricing & Value"
         ]
-      }
+      },
+      "next": "These requests come from reviewers who still rate the app well. Test a student price and a regional price in two markets and read conversion and 90-day retention before rolling either out."
     },
     {
       "id": "f_search",
@@ -372,7 +390,8 @@
         "categories_any": [
           "Search & Sources"
         ]
-      }
+      },
+      "next": "Check Deep Research against the stated gaps: context length, freshness, and source handling. Each is measurable with the accuracy eval set."
     },
     {
       "id": "f_ui",
@@ -385,7 +404,8 @@
         "categories_any": [
           "UI / UX"
         ]
-      }
+      },
+      "next": "Small, concrete requests (dark mode contrast, text size, hiding follow-ups). Ship the cheapest two behind settings and watch whether the requests stop."
     },
     {
       "id": "f_voice",
@@ -398,7 +418,8 @@
         "categories_any": [
           "Voice & Dictation"
         ]
-      }
+      },
+      "next": "Hands-free and push-to-talk modes are the named asks. Check voice session length and drop-off before investing; voice complaints outnumber voice requests here."
     },
     {
       "id": "f_threads",
@@ -411,7 +432,8 @@
         "categories_any": [
           "Threads & History"
         ]
-      }
+      },
+      "next": "Rename, folders, and search over chats. Confirm with usage of existing bookmarks and history before building organisation features."
     },
     {
       "id": "f_computer",
@@ -424,7 +446,8 @@
         "categories_any": [
           "Computer & Agents"
         ]
-      }
+      },
+      "next": "A request for Computer on lower tiers. Weigh it against the credit complaints above: wider access without a cost estimate would create more of those."
     },
     {
       "id": "f_models",
@@ -437,7 +460,8 @@
         "categories_any": [
           "Model Choice"
         ]
-      }
+      },
+      "next": "Named model requests and fewer switching limits. Log which models users try to pick and are refused; that list is the roadmap."
     }
   ],
   "strengths": [
@@ -450,7 +474,8 @@
           "Specific Praise"
         ],
         "pattern": "research|recherche|investiga|pesquisa|riset|بحث"
-      }
+      },
+      "next": "Keep research tasks in the regression eval. Any model or retrieval change ships only if research quality holds."
     },
     {
       "id": "s_sources",
@@ -463,7 +488,8 @@
         "categories_any": [
           "Search & Sources"
         ]
-      }
+      },
+      "next": "Sources are the stated reason to choose Perplexity. Treat citation accuracy as a guardrail metric and track citation click-through."
     },
     {
       "id": "s_study",
@@ -474,7 +500,8 @@
           "Specific Praise"
         ],
         "pattern": "stud|school|homework|exam|student|tarea|estudi|devoir|étud|escola|belajar|tugas"
-      }
+      },
+      "next": "Students are a named segment. Test the student price requested above against this group's retention."
     },
     {
       "id": "s_accuracy",
@@ -487,7 +514,8 @@
         "categories_any": [
           "Answer Accuracy"
         ]
-      }
+      },
+      "next": "These reviews are the counterweight to the wrong-answer set. Use both as the eval baseline so a fix for one does not regress the other."
     },
     {
       "id": "s_speed",
@@ -500,7 +528,8 @@
         "categories_any": [
           "Speed"
         ]
-      }
+      },
+      "next": "Set a latency guardrail. Speed is praised by name, so a slower model has to prove it is worth the wait."
     },
     {
       "id": "s_models",
@@ -513,7 +542,8 @@
         "categories_any": [
           "Model Choice"
         ]
-      }
+      },
+      "next": "Protect the model bundle. The Model Choice complaints show when it breaks: a picked model that does not answer."
     }
   ],
   "label_takeaways": {

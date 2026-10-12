@@ -188,10 +188,10 @@ export const builders = {
     const spanY = Math.max(20, highest - lowest), yMax = highest + spanY * 0.34, yMin = lowest - spanY * 0.34;
     // Quadrants: which side of the median size and the median pain each area falls on.
     const QUADS = [
-      {key: 'tr', big: true, hot: true, title: 'Big and painful', note: 'Many reviews, mostly 1 to 2 stars'},
-      {key: 'tl', big: false, hot: true, title: 'Small but severe', note: 'Few reviews, mostly 1 to 2 stars'},
-      {key: 'br', big: true, hot: false, title: 'Big, milder', note: 'Many reviews, more mixed stars'},
-      {key: 'bl', big: false, hot: false, title: 'Small, milder', note: 'Few reviews, more mixed stars'},
+      {key: 'tr', big: true, hot: true, title: 'Big and painful', note: 'Many reviews, mostly 1 to 2 stars. Fix first'},
+      {key: 'tl', big: false, hot: true, title: 'Small but severe', note: 'Few reviews, mostly 1 to 2 stars. Cheap, loud, usually operational'},
+      {key: 'br', big: true, hot: false, title: 'Big, milder', note: 'Many reviews, mixed stars. Needs a design or policy answer'},
+      {key: 'bl', big: false, hot: false, title: 'Small, milder', note: 'Few reviews, mixed stars. Watch'},
     ];
     const inQuad = q => points.filter(p => (p.x >= medianX) === q.big && (p.y >= medianY) === q.hot).length;
     // Items with near-identical values would sit on top of each other. Push overlapping bubbles
@@ -328,7 +328,8 @@ function linkRows(entry, config) {
 }
 
 // model: {title, subtitle, kind, data, height, table: {columns, rows}, legend: [{token, name, value, share}], span,
-//   links: [{name, href, label}] one per row of a horizontal bar chart, in row order}
+//   links: [{name, href, label}] one per row of a horizontal bar chart, in row order,
+//   takeaways: [{text, href, onClick}] the Overview takeaways that rest on this chart, shown as back-links under it}
 export function chartCard(model) {
   const card = node('section', undefined, `chart-card${model.span ? ` span-${model.span}` : ''}`);
   if (model.id) card.id = `chart-${model.id}`;
@@ -353,6 +354,11 @@ export function chartCard(model) {
   table.append(head, rows); tableWrap.append(table);
   toggle.addEventListener('click', () => { const show = tableWrap.hidden; tableWrap.hidden = !show; body.hidden = show; message.hidden = show || !!window.Chart; toggle.textContent = show ? 'View as chart' : 'View as table'; toggle.setAttribute('aria-pressed', String(show)); });
   card.append(header, body, message, tableWrap);
+  if (model.takeaways?.length) {
+    const back = node('ul', undefined, 'chart-takeaways');
+    for (const item of model.takeaways) { const row = node('li'), anchor = node('a', undefined, 'chart-takeaway'); anchor.href = item.href; anchor.append(node('span', item.text)); if (item.onClick) anchor.addEventListener('click', event => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); item.onClick(); }); row.append(anchor); back.append(row); }
+    card.append(back);
+  }
   const entry = {canvas, model, message, anchors: anchors.length ? anchors : null}; active.add(entry);
   requestAnimationFrame(() => { if (canvas.isConnected) render(entry); });
   return card;

@@ -35,6 +35,35 @@ Changes after Abhinav's second review (Oct 9, 2026). These override the token ta
 - **Byline under the title:** "Built by Abhinav Gupta, MS Product Management at CMU", with
   LinkedIn and GitHub links.
 
+Key takeaways, rewritten Oct 12, 2026 after Abhinav's review ("they just describe what is happening,
+but they are not actionable"):
+
+- **Each takeaway is three parts:** a conclusion as the title, the evidence line with its numbers,
+  and a **Next step** disclosure (`<details>`, teal left rule, closed by default) that names the
+  check or measurement a PM would run and the decision it informs. Abhinav's second review asked
+  for smaller cards with the next step "as a dropdown so that it looks cleaner". The section note
+  says these are signals to investigate, not validated problems.
+- **Two links per card:** "See chart" scrolls to the chart it rests on; inside the disclosure, a
+  second link opens the reviews behind it (Deep Dive category or label, an Opportunities card, or
+  the Reviews tab filtered to a competitor).
+- **Charts link back.** `chartCard` takes `takeaways: [{text, href, onClick}]` and lists them under
+  the chart as "↑ Takeaway NN". `#overview?takeaway=N` opens the page at that card.
+- **Everything is computed** in `takeawayPoints()` in `site/app.js`: counts, ranks, ratios, and
+  conditional wording. Category-level items need n ≥ 30 in scope or they drop out.
+- **Six cards, always** (two rows of three). A seventh on the Android version drop was cut: a lone
+  card on a third row looked wrong, and 0.14 stars was the weakest finding.
+- The Reviews tab gained a **"Names a competitor"** filter so the competitor takeaway lands on the
+  same reviews the chart counts (the LLM label), not a text search.
+
+Opportunities, same pass (Oct 12, 2026):
+
+- **Every card has a `next` line** in `analysis/insights.json` (improvements, requests, strengths),
+  token-filled by `build_site_data.py` like `desc`, rendered as the same Next step disclosure.
+- **"Start here"** sits under the matrix: three lines (Fix first · Cheap and loud · Big, mixed)
+  listing the areas in each actionable quadrant with a link to each card. Same medians as the chart.
+- Matrix quadrant captions now end with the action ("Fix first", "Cheap, loud, usually
+  operational", "Needs a design or policy answer", "Watch").
+
 ## What was wrong with v1
 
 - **One color doing every job.** Twelve charts in the same blue. Color carried no meaning, so
