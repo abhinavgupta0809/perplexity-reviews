@@ -1,4 +1,8 @@
+import {inject} from 'https://cdn.jsdelivr.net/npm/@vercel/analytics@2.0.1/dist/index.mjs';
 import {chartCard, clearCharts, redrawCharts, colorForLabel, LABEL_ORDER} from './charts.js';
+
+// Initialize Vercel Analytics
+inject();
 const $ = selector => document.querySelector(selector);
 const node = (tag, text, className) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (className) el.className = className; return el; };
 const button = (text, action, className) => { const el = node('button', text, className); el.type = 'button'; el.dataset.focusId = text; el.addEventListener('click', action); return el; };
