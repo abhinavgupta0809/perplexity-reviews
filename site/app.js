@@ -111,83 +111,110 @@ const insightCount = id => { for (const group of ['improvements', 'feature_reque
 const opportunityJump = (id, text) => ({text, onClick: () => { state.jump = id; navigate('opportunities'); }, href: `#opportunities?${new URLSearchParams({platform: state.platform})}`});
 const deepJump = (mode, group, text, platform = state.platform) => ({text, href: `#deep-dive?${new URLSearchParams({platform, mode, group}).toString().replaceAll('+', '%20')}`});
 function takeawayPoints(data, weeks, categories) {
-  const s = data.stats, L = data.labels, r2 = value => nf(value, ui.rating_digits), points = [];
+  // Findings + findings = insight = hypothesis. Each card holds two or three findings from different cuts of the reviews
+  // (helpful votes, co-occurrence, platform, time, competitors), the tension they add up to for the user and for the
+  // company, and the idea that tension suggests, as a test. Every figure comes from summary.json for the current scope.
+  const s = data.stats, F = data.facts || {}, r1 = value => nf(value, 1), r2 = value => nf(value, ui.rating_digits), points = [];
   const [praiseLabel, complaintLabel] = ['Specific Praise', 'Specific Complaint'];
-  const cat = name => categories.find(c => c.name === name), complaints = c => c.by_label[complaintLabel];
-  const scopeNote = state.platform === 'all' ? '' : `${platformName(state.platform)} `;
-  const stars = weeks.map(w => w.avg_rating), weekLow = Math.min(...stars), weekHigh = Math.max(...stars), weekSwing = weekHigh - weekLow;
+  const cat = name => categories.find(c => c.name === name), complaints = c => c?.by_label[complaintLabel] ?? ui.zero, praise = c => c?.by_label[praiseLabel] ?? ui.zero;
+  const scopeNote = state.platform === 'all' ? '' : `${platformName(state.platform)} `, ok = c => c && !isSmall(c), x = value => `${r1(value)}x`, REV = 'Reviews';
+  const pair = (a, b) => (F.pairs || []).find(q => (q.a === a && q.b === b) || (q.a === b && q.b === a));
+  const V = F.votes?.by, votesFor = name => V?.[name] ? x(V[name].ratio) : null, skew = name => F.skew?.by?.[name], five = name => F.five_star?.by?.[name], comp = name => F.competitors?.[name];
+  const all = state.platform === 'all', ratePct = v => nf(Math.round(v));
 
-  // 1. The star average is not a health metric.
-  const five = data.ratings.find(r => r.value === ui.rating_max), sc = L[complaintLabel].count;
-  if (five && s.substantive) points.push({chart: 'stars-sentiment', see: 'Stars vs sentiment',
-    title: s.avg_rating > s.avg_sentiment ? 'The star average hides the problems' : 'The words run warmer than the stars',
-    evidence: `${share(five.stars, s.count)} of reviews give ${ui.rating_max} stars, but only ${share(five.sentiment, s.sentiment_n)} read as a ${ui.rating_max} from the text. Average stars ${r2(s.avg_rating)}, average sentiment ${r2(s.avg_sentiment)}.`,
-    action: `Track specific complaints as a share of substantive reviews (${nf(sc)} of ${nf(s.substantive)}, ${share(sc, s.substantive)}) as the health number. ${weekSwing < 0.25 ? `The weekly star average moved only ${r2(weekSwing)} in ${weeks.length} weeks, so it will not show a problem early.` : `Weekly stars swung ${r2(weekSwing)} on small samples, so the complaint share is the steadier read.`}`,
+  // 1. Free users hit the wall at the first upload.
+  const free = cat('Free Limits & Paywall'), images = cat('Images & Files'), useCases = cat('Use Cases'), accuracy = cat('Answer Accuracy'), fi = pair('Free Limits & Paywall', 'Images & Files');
+  if (ok(free) && fi) { const onePhoto = insightCount('i_free_images');
+    points.push({chart: 'about', see: 'What reviews are about', title: 'Free users hit the wall at the first upload, not the first answer',
+      findings: [{source: REV, text: `${nf(complaints(free))} ${scopeNote}complaints are about free limits (${r2(free.avg_rating)} stars). ${nf(fi.count)} of them are also about images and files, ${x(fi.lift)} what chance would give (${r2(fi.avg_rating)} stars)${onePhoto && onePhoto !== fi.count ? `; ${nf(onePhoto)} describe a one-photo-a-day or one-photo-a-month cap` : ''}.`},
+        ...(ok(useCases) && ok(accuracy) ? [{source: REV, text: `The same reviews praise the answers: ${nf(praise(useCases))} praise what people use Perplexity for (${r2(useCases.avg_rating)} stars) and ${nf(praise(accuracy))} praise accuracy, against ${nf(complaints(accuracy))} accuracy complaints.`}] : [])],
+      insight: 'People come to ask a question, find the value the moment they upload something, and meet the paywall right there. Perplexity wants conversion and gates the one action that proves the product; the user reads it as never having been allowed to try.',
+      hypothesis: 'A first-week upload allowance, or showing the cap before the upload instead of after it, raises day-7 retention of new free users without lowering Pro conversion. Test against the current gate on the first-session cohort.',
+      more: onePhoto ? opportunityJump('i_free_images', 'See the one-photo limit opportunity') : deepJump('categories', free.name, 'Read the free-limit reviews')}); }
+
+  // 2. Pro users pay to hit a different wall.
+  const credits = cat('Credits & Paid Limits'), cc = pair('Computer & Agents', 'Credits & Paid Limits'), skC = skew('Credits & Paid Limits'), claude = comp('Claude');
+  if (ok(credits)) { const claudeCredits = claude?.over?.find(o => o[0] === 'Credits & Paid Limits'), claudeModels = claude?.over?.find(o => o[0] === 'Model Choice');
+    points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: 'Pro users pay to hit a different wall',
+      findings: [{source: REV, text: `${nf(complaints(credits))} ${scopeNote}complaints are about credits and paid limits (${r2(credits.avg_rating)} stars, the lowest-rated product area)${skC && all ? `; ${ratePct(skC.ios_pct)}% come from iPhone against ${ratePct(F.skew.ios_base_pct)}% of all substantive reviews` : ''}.`},
+        ...(cc ? [{source: REV, text: `${nf(cc.count)} reviews pair credits with the Computer agent product, ${x(cc.lift)} what chance would give (${r2(cc.avg_rating)} stars): the agent burns the credits the subscription bought.`}] : []),
+        ...(claudeCredits ? [{source: REV, text: `Reviews that name Claude are ${x(claudeCredits[2])} over-represented in credit complaints${claudeModels ? ` and ${x(claudeModels[2])} in model-choice complaints` : ''}.`}] : [])],
+      insight: 'Subscribers believed paying would remove limits. It moved the meter onto the agent product Perplexity promotes hardest, and when the meter runs out they name the model vendor they could pay directly instead. The iPhone skew says these are the paying users.',
+      hypothesis: 'A visible credit meter and a cost estimate before each agent run cut Pro credit complaints and Pro churn more than raising the cap would. Show the estimate to half of Pro users for 60 days and compare cancellations that cite limits.',
+      more: opportunityJump('i_credits', 'See the credits opportunity')}); }
+
+  // 3. The price complaint comes from fans.
+  const price = cat('Pricing & Value'), fp = five('Pricing & Value'), billing = cat('Billing & Subscription');
+  if (ok(price) && fp && F.five_star) {
+    const walls = [['free limits', free], ['credits', credits], ['billing', billing]].filter(([, c]) => ok(c)).map(([n, c]) => `${n} ${r2(c.avg_rating)}`).join(', ');
+    points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: 'The price complaint comes from fans; the walls make enemies',
+      findings: [{source: REV, text: `${ratePct(fp.five_pct)}% of the ${nf(fp.count)} ${scopeNote}pricing complaints give five stars, against ${ratePct(F.five_star.base_pct)}% of all complaints. Pricing & Value averages ${r2(price.avg_rating)} stars.`},
+        ...(walls ? [{source: REV, text: `The walls rate far lower: ${walls} stars.`}] : [])],
+      insight: 'The people who say it is too expensive mostly like the product and are negotiating. The angry reviews are about walls and billing, not the number on the price tag. Perplexity hears "price" and reaches for discounts; the reviews say the price is not the problem for anyone who is actually angry.',
+      hypothesis: 'A lower or annual tier converts the five-star price complainers and does nothing for wall complaints. Test a cheaper tier on users who hit a limit and rated 4+ in-app, and separately a limit change on the one-star cohort.',
+      more: opportunityJump('f_pricing', 'See the pricing requests')}); }
+
+  // 4. The lowest ratings have no human in them.
+  const support = cat('Customer Support'), login = cat('Login & Account'), bs = pair('Billing & Subscription', 'Customer Support');
+  if (ok(billing) && bs) { const cancel = insightCount('i_cancel');
+    points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: 'The lowest ratings come from moments with no human in them, and other users upvote those most',
+      findings: [{source: REV, text: `${nf(bs.count)} ${scopeNote}reviews are about billing and support together, ${x(bs.lift)} what chance would give, at ${r2(bs.avg_rating)} stars. Billing ${r2(billing.avg_rating)}${ok(login) ? `, login ${r2(login.avg_rating)}` : ''}${ok(support) ? `, support ${r2(support.avg_rating)}` : ''}: the lowest-rated areas on the page.${cancel ? ` ${nf(cancel)} say they could not cancel or get a refund.` : ''}`},
+        ...(votesFor('Customer Support') ? [{source: REV, text: `On Google Play, support complaints get ${votesFor('Customer Support')} their share of helpful votes${votesFor('Speed') ? `; speed praise gets ${votesFor('Speed')}` : ''}.`}] : [])],
+      insight: 'The lowest ratings are not about the model. They come from a charge nobody can reverse, a login nobody can fix, a ticket nobody answers, and other users upvote them because everyone fears the same thing. The model ships weekly; the cancel path never does.',
+      hypothesis: 'A visible cancel path and a stated refund SLA remove more one-star reviews per engineer-week than any model change. Measure one-star billing reviews per 1,000 subscribers before and after.',
+      more: cancel ? opportunityJump('i_cancel', 'See the cancel-and-refund opportunity') : deepJump('categories', billing.name, 'Read the billing reviews')}); }
+
+  // 5. Replies go to the reviews that say the least.
+  const R = F.replies, gb = R?.by_label?.['Generic Bad'], scp = R?.by_label?.['Specific Complaint'];
+  if (gb && scp && gb.count >= 100) { const by = R.by_category, rate = name => by[name] ? `${name.toLowerCase().replace(' & account', '').replace(' & subscription', '').replace('customer ', '')} ${ratePct(by[name].rate)}%` : null;
+    points.push({chart: 'about', see: 'What reviews are about', title: 'Perplexity replies to the reviews that say the least',
+      findings: [{source: REV, text: `On Google Play, ${ratePct(gb.rate)}% of one-line "bad" reviews with nothing specific in them get a developer reply, against ${ratePct(scp.rate)}% of specific complaints (${nf(R.total)} replies in all).`},
+        {source: REV, text: `Reply rate on specific complaints by area: ${['Login & Account', 'Customer Support', 'Billing & Subscription', 'Free Limits & Paywall', 'Answer Accuracy'].map(rate).filter(Boolean).join(', ')}.`}],
+      insight: 'Replies are triggered by low stars, not by whether the review says something a reply could fix. The specific complaints a human could resolve get fewer answers than reviews that contain nothing to answer. The user wants a fix; the company wants the rating moved; a template gives neither.',
+      hypothesis: 'Routing replies by label, specific billing, login and support complaints first, raises the share of replied reviews whose rating is later edited up. Measure rating edits after reply, by label, over 60 days.',
+      more: deepJump('labels', complaintLabel, 'Read the specific complaints')}); }
+
+  // 6. Free users compare to Google; paying users compare to the model vendors.
+  const google = comp('Google Search'), chatgpt = comp('ChatGPT'), gemini = comp('Gemini');
+  if (google?.over?.length && claude?.over?.length && chatgpt) {
+    points.push({chart: 'competitors', see: 'Competitors named', title: 'Free users compare Perplexity to Google; paying users compare it to the model vendors',
+      findings: [{source: REV, text: `Reviews naming Google Search are ${x(google.over[0][2])} over-represented in ${google.over[0][0]} (${nf(google.count)} ${scopeNote}reviews: ${nf(google.praise)} praise, ${nf(google.complaints)} complaints).`},
+        {source: REV, text: `Reviews naming Claude are ${x(claude.over[0][2])} over-represented in ${claude.over[0][0]}${chatgpt.over?.[0] ? `; ChatGPT ${x(chatgpt.over[0][2])} in ${chatgpt.over[0][0]}` : ''}${gemini?.over?.[0] ? `; Gemini ${x(gemini.over[0][2])} in ${gemini.over[0][0]}` : ''}. ChatGPT is the most-named rival: ${nf(chatgpt.count)} reviews at ${r2(chatgpt.avg_rating)} stars.`}],
+      insight: 'Free users compare Perplexity to Google, on sources. Paying users compare it to the model vendors, on which models they get and how much. Perplexity is a search product to the people who do not pay and a model reseller to the people who do, and the second comparison is the one it cannot win on price.',
+      hypothesis: 'Positioning Pro on what no single vendor sells (several models with cited sources in one place) and the free tier on sources against Google lifts conversion more than matching vendor limits. Test the two messages on the upgrade screen.',
+      more: {text: 'Read the reviews naming ChatGPT', href: `#reviews?${new URLSearchParams({platform: state.platform})}`, onClick: () => { resetReviewFilters(); state.filters.competitor = 'ChatGPT'; navigate('reviews'); }}}); }
+
+  // Fallback so every scope shows six: the star average against the text.
+  const fiveStars = data.ratings.find(r => r.value === ui.rating_max), sc = data.labels[complaintLabel].count;
+  if (points.length < 6 && fiveStars && s.substantive) points.push({chart: 'stars-sentiment', see: 'Stars vs sentiment', title: s.avg_rating > s.avg_sentiment ? 'The star average hides the problems' : 'The words run warmer than the stars',
+    findings: [{source: REV, text: `${share(fiveStars.stars, s.count)} of ${scopeNote}reviews give ${ui.rating_max} stars, but only ${share(fiveStars.sentiment, s.sentiment_n)} read as a ${ui.rating_max} from the text. Average stars ${r2(s.avg_rating)}, average sentiment ${r2(s.avg_sentiment)}.`}],
+    insight: `Stars measure the habit; the text measures the day. ${nf(sc)} of ${nf(s.substantive)} substantive reviews (${share(sc, s.substantive)}) are specific complaints the star average absorbs.`,
+    hypothesis: 'Tracking specific complaints as a share of substantive reviews, beside the star average, shows product problems weeks before the rating moves.',
     more: deepJump('labels', complaintLabel, 'Read the specific complaints')});
-
-  // 2. Free users hit the wall before they see value.
-  const free = cat('Free Limits & Paywall'), images = cat('Images & Files');
-  if (free && !isSmall(free)) {
-    const rank = [...categories].sort((a, b) => complaints(b) - complaints(a)).findIndex(c => c.name === free.name) + ui.one, onePhoto = insightCount('i_free_images');
-    points.push({chart: 'about', see: 'What reviews are about', title: 'Free users hit the wall before they see value',
-      evidence: `${nf(complaints(free))} complaints are about free limits, ${rank === ui.one ? 'the most of any topic' : `the #${rank} complaint topic`} (${share(complaints(free), free.count)} of its ${nf(free.count)} reviews, ${r2(free.avg_rating)} stars).${images ? ` ${nf(complaints(images))} more are about image and file caps` : ''}${onePhoto ? `, and ${nf(onePhoto)} describe a one-photo or one-image limit` : ''}.`,
-      action: 'Pull the free-tier funnel. What share of free users hit the upload cap in their first session, and do they come back less than users who did not? If the capped cohort retains worse, the cap costs more than it converts, and the fix is a higher first-week cap or showing the limit before the upload.',
-      more: onePhoto ? opportunityJump('i_free_images', 'See the one-photo limit opportunity') : deepJump('categories', free.name, 'Read the free-limit reviews')});
-  }
-
-  // 3. Accuracy complaints are a free eval set.
-  const accuracy = cat('Answer Accuracy');
-  if (accuracy && !isSmall(accuracy)) {
-    const wrong = insightCount('i_wrong') || complaints(accuracy), ignores = insightCount('i_ignores');
-    points.push({chart: 'about', see: 'What reviews are about', title: 'Accuracy is praised and attacked in equal measure',
-      evidence: `${nf(accuracy.by_label[praiseLabel])} reviews praise accurate answers; ${nf(complaints(accuracy))} report wrong, invented, or off-target ones (${share(complaints(accuracy), accuracy.count)} of ${nf(accuracy.count)}, ${r2(accuracy.avg_rating)} stars).${ignores ? ` ${nf(ignores)} say the model ignored the instruction it was given.` : ''}`,
-      action: `Treat the ${nf(wrong)} wrong-answer reviews as a seed eval set. Group them by failure type (invented fact, stale source, ignored instruction), then measure the current model on each group. That decides whether this is a retrieval problem or a model problem before anyone touches either.`,
-      more: deepJump('categories', accuracy.name, 'Read the accuracy reviews')});
-  }
-
-  // 4. The lowest-rated problems are operational.
-  const ops = ['Billing & Subscription', 'Login & Account', 'Customer Support'].map(cat).filter(c => c && !isSmall(c));
-  if (ops.length) {
-    const total = ops.reduce((sum, c) => sum + complaints(c), ui.zero), weighted = ops.reduce((sum, c) => sum + c.avg_rating * c.count, ui.zero) / ops.reduce((sum, c) => sum + c.count, ui.zero), cancel = insightCount('i_cancel');
-    const topics = {'Billing & Subscription': 'cancelling, refunds, and unexpected charges', 'Login & Account': 'sign-in', 'Customer Support': 'unanswered support'}, named = ops.map(c => topics[c.name]);
-    points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: 'The lowest-rated problems are operational, not model problems',
-      evidence: `${nf(total)} complaints are about ${named.length > ui.one ? `${named.slice(ui.zero, -ui.one).join(', ')}, and ${named.at(-ui.one)}` : named[ui.zero]}. ${ops.length > ui.one ? 'Those topics average' : 'That topic averages'} ${r2(weighted)} stars${ops.length > ui.one ? ` (${ops.map(c => `${c.name} ${r2(c.avg_rating)}`).join(', ')})` : ''}.${cancel ? ` ${nf(cancel)} say they could not cancel or get a refund.` : ''}`,
-      action: 'These need a support fix, not a model change. Measure time to first reply on billing tickets, and count how many cancel attempts start in the app and end on a store support page. A visible cancel path and a refund SLA are likely the cheapest rating gains on this page.',
-      more: cancel ? opportunityJump('i_cancel', 'See the cancel-and-refund opportunity') : deepJump('categories', ops[0].name, `Read the ${ops[0].name} reviews`)});
-  }
-
-  // 5. iOS is where the paying users complain. Always compares both platforms, whatever the scope.
-  const all = summary.all, ios = summary.ios, android = summary.android, creditsName = 'Credits & Paid Limits';
-  const creditsAll = all.categories[creditsName], creditsIos = ios.categories[creditsName];
-  if (ios.stats.count && android.stats.count && creditsAll && creditsIos) points.push({chart: 'platform-mix', see: 'Label mix by platform', title: 'iOS is where the paying users complain',
-    evidence: `iOS is ${share(ios.stats.count, all.stats.count)} of all reviews but ${share(creditsIos.count, creditsAll.count)} of the ${creditsName} reviews (${nf(creditsIos.count)} of ${nf(creditsAll.count)}). ${nf(ios.labels[complaintLabel].pct_of_scope)}% of iOS reviews are specific complaints, against ${nf(android.labels[complaintLabel].pct_of_scope)}% on Android.`,
-    action: `The App Store feed is capped at 500 reviews per country, so do not read iOS as a worse product. Do read its ${creditsName} reviews first when you want paying users' words: subscribers are likely over-represented there. Confirm by checking the Pro share of iOS installs against Android.`,
-    more: deepJump('categories', creditsName, 'Read the iOS credits reviews', 'ios')});
-
-  // 6. Reviews that name the top rival are a churn signal.
-  const rivals = data.competitors.filter(c => c.count && c.name !== 'Other').sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  if (rivals.length > ui.one && s.pct_low_star) { const [top, next] = rivals, lowStars = top.star_counts[0] + top.star_counts[1], ratio = (lowStars / top.count * ui.hundred) / s.pct_low_star;
-    points.push({chart: 'competitors', see: 'Competitors named', title: `Reviews that name ${top.name} are a churn signal`,
-      evidence: `${top.name} appears in ${nf(top.count)} ${scopeNote}reviews, ahead of ${next.name} (${nf(next.count)}). ${share(lowStars, top.count)} of them give 1 or 2 stars, against ${pct(s.pct_low_star)} of all ${scopeNote}reviews: ${nf(ratio, 1)}× the base rate.`,
-      action: `Read the ${nf(lowStars)} low-star ${top.name} reviews as exit interviews. They name what the reviewer switched for. Tally those reasons against the strengths list in Opportunities before assuming the answer is price.`,
-      more: {text: `Read the reviews naming ${top.name}`, href: `#reviews?${new URLSearchParams({platform: state.platform})}`, onClick: () => { resetReviewFilters(); state.filters.competitor = top.name; navigate('reviews'); }}}); }
-
-  return points;
+  return points.slice(ui.zero, 6);
 }
 // The next step sits behind a disclosure so a card reads as one line of evidence until the reader asks for more.
-function nextStep(text, more) {
-  const details = node('details', undefined, 'next-step'), summary = node('summary'); summary.append(icon('arrow'), node('span', 'Next step')); details.append(summary, node('p', text));
+function nextStep(text, more, label = 'Next step') {
+  const details = node('details', undefined, 'next-step'), summary = node('summary'); summary.append(icon('arrow'), node('span', label)); details.append(summary, node('p', text));
   if (more) { const link = node('a', undefined, 'key-point-link secondary'); link.href = more.href; link.append(node('span', more.text), icon('arrow')); if (more.onClick) link.addEventListener('click', event => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); more.onClick(); }); details.append(link); }
   return details;
+}
+// One card: findings (each tagged with its source), the insight they add up to, and the hypothesis to test.
+function insightCard(point, index, idPrefix) {
+  const n = index + ui.one, item = node('li', undefined, 'key-point'); item.id = `${idPrefix}-${n}`;
+  item.append(node('p', String(n).padStart(ui.two, '0'), 'key-point-index'), node('h3', point.title), node('p', 'Findings', 'kp-label'));
+  const findings = node('ol', undefined, 'findings');
+  for (const f of point.findings.filter(f => f.text)) { const li = node('li'); li.append(node('span', f.source, 'src-tag'), node('span', f.text)); findings.append(li); }
+  item.append(findings, node('p', 'Insight', 'kp-label'), node('p', point.insight, 'key-point-evidence'), nextStep(point.hypothesis, point.more, 'Hypothesis to test'));
+  return item;
 }
 function takeaways(points) {
   const list = node('ol', undefined, 'key-points');
   points.forEach((point, index) => {
-    const n = index + ui.one, item = node('li', undefined, 'key-point'); item.id = `takeaway-${n}`;
-    const link = node('a', undefined, 'key-point-link');
+    const item = insightCard(point, index, 'takeaway'), link = node('a', undefined, 'key-point-link');
     link.href = chartHref(point.chart); link.append(node('span', `See chart: ${point.see}`), icon('arrow'));
     link.addEventListener('click', event => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); jumpToChart(point.chart); });
-    item.append(node('p', String(n).padStart(ui.two, '0'), 'key-point-index'), node('h3', point.title), node('p', point.evidence, 'key-point-evidence'), nextStep(point.action, point.more), link); list.append(item);
+    item.append(link); list.append(item);
   });
   return list;
 }
@@ -223,7 +250,7 @@ function overview() {
   root.append(lead);
 
   const weeks = data.weekly, points = takeawayPoints(data, weeks, categoryEntries(data.categories)), backlinks = chart => takeawayLinks(points, chart);
-  root.append(sectionHeading('Key takeaways', `${platformName(state.platform)} · what the reviews show and the next check for each · store reviews are self-selected, so treat these as signals to investigate, not validated problems`), takeaways(points));
+  root.append(sectionHeading('Insights', `${platformName(state.platform)} · findings + findings = insight = hypothesis · each card adds up two or three findings from different cuts of the reviews into the tension behind them, then the idea to test · store reviews are self-selected, so these are hypotheses, not validated problems`), takeaways(points));
 
   const weekLabels = weeks.map(w => new Date(w.week).toLocaleDateString('en-US', {month: 'short', day: 'numeric', timeZone: 'UTC'}));
   const trend = node('div', undefined, 'grid');
