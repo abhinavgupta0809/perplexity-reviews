@@ -79,6 +79,7 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent);
 /* Header and navigation */
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 44px 0 28px; flex-wrap: wrap; }
 .subtitle { color: var(--text-3); margin-top: 8px; font-size: 14px; }
+.coverage-note { color: var(--text-2); margin-top: 8px; font-size: 13px; line-height: 20px; max-width: 92ch; padding: 6px 10px; border-left: 3px solid var(--ios); background: color-mix(in srgb, var(--ios) 8%, transparent); border-radius: 0 8px 8px 0; }
 .byline { color: var(--text-3); margin-top: 6px; font-size: 13px; line-height: 20px; }
 .byline strong { color: var(--text-1); font-weight: 600; }
 .byline a { color: var(--brand); font-weight: 500; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--brand) 40%, transparent); text-underline-offset: 3px; }

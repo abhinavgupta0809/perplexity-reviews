@@ -12,8 +12,12 @@ APPSTORE_COUNTRIES = (
     "us", "gb", "in", "ca", "au", "de", "fr", "es", "br", "mx",
     "jp", "kr", "id", "sg", "ae",
 )
-WINDOW_DAYS = 90
-MAX_ROWS = 20_000
+# The published corpus (data/) is the 90-day run of 2026-10-09 plus an Android-only append
+# through 2026-10-25T23:59:59Z (pipeline/append_gap.py), so it spans 2026-07-11T06:03:20Z to
+# 2026-10-25T23:59:59Z: 106.75 days. Both values are raised so they describe that corpus;
+# neither run hit the cap, and no review has ever been sampled out. Runs 1 and 2 used 90 / 20,000.
+WINDOW_DAYS = 107
+MAX_ROWS = 30_000
 SEED = 42
 PAGE_SIZE = 200
 PAGE_DELAY = 0.5

@@ -18,7 +18,8 @@ from .common import ScrapeError, atomic_text, cli, dt, read_json, validate_row
 SCOPES = ('all', 'android', 'ios')
 GROUPS = ('callouts', 'improvements', 'feature_requests', 'strengths')
 MATCH_KEYS = {'labels_any', 'categories_any', 'categories_all', 'pattern', 'regression_claim', 'competitors_any', 'platform'}
-TOKENS = {'count', 'pct_low_star', 'avg_rating', 'ios_count', 'android_count', 'pct_of_substantive'}
+TOKENS = {'count', 'pct_low_star', 'avg_rating', 'ios_count', 'android_count', 'pct_of_substantive',
+          'pct_ios_overlap', 'pct_ios_all_overlap', 'overlap_end'}
 REVIEW_COLUMNS = ('review_id', 'platform', 'timestamp', 'date_utc', 'rating', 'title', 'review_text', 'app_version', 'thumbs_up', 'labels', 'categories', 'sentiment_rating', 'language', 'english_translation', 'topic', 'competitors', 'regression_claim', 'rating_mismatch', 'is_truncated')
 
 
@@ -120,6 +121,8 @@ def fill_tokens(text, stats):
         if key not in TOKENS:
             raise ScrapeError(f'Unknown insight token: {key}')
         value = stats[key]
+        if isinstance(value, str):
+            return value
         if value is None:
             return 'n/a'
         if key.startswith('pct_'):
@@ -130,7 +133,20 @@ def fill_tokens(text, stats):
     return re.sub(r'\{\{(.*?)\}\}', replace, text)
 
 
-def resolve_insights(source, rows, taxonomy):
+def overlap_end(rows):
+    """Last UTC day covered by every platform in the corpus. Platform shares are only fair up to here."""
+    return min(max(r['date_utc'] for r in rows if r['platform'] == p) for p in {r['platform'] for r in rows})
+
+
+def day_text(day):
+    value = dt(day + 'T00:00:00Z')
+    return f'{value:%b} {value.day}, {value.year}'
+
+
+def resolve_insights(source, rows, taxonomy, both_end=None):
+    both_end = both_end or overlap_end(rows)
+    in_both = [r for r in rows if r['date_utc'] <= both_end]
+    ios_all = percent(sum(r['platform'] == 'ios' for r in in_both), len(in_both))
     result = {k: source[k] for k in ('evidence_note', 'label_takeaways', 'category_notes')}
     seen = set()
     for group in GROUPS:
@@ -145,10 +161,15 @@ def resolve_insights(source, rows, taxonomy):
                 raise ScrapeError(f'Insight {item["id"]} matches zero reviews in all scope')
             resolved = {k: v for k, v in item.items() if k not in ('title', 'text', 'desc', 'next')}
             resolved['scopes'] = {}
+            both = [r for r in matched if r['date_utc'] <= both_end]
+            ios_share = percent(sum(r['platform'] == 'ios' for r in both), len(both))
             for scope in SCOPES:
                 subset = [r for r in matched if scope == 'all' or r['platform'] == scope]
                 substantive = sum(bool(r['categories']) for r in rows if scope == 'all' or r['platform'] == scope)
                 stats = statistics(subset, substantive, taxonomy)
+                # iPhone share is a cross-platform fact, so it uses every platform whatever the scope, and counts only
+                # dates both stores cover, so a one-platform append cannot move it.
+                stats.update(pct_ios_overlap=ios_share, pct_ios_all_overlap=ios_all, overlap_end=day_text(both_end))
                 resolved['scopes'][scope] = {'stats': stats, 'review_ids': [r['review_id'] for r in subset],
                                            **{k: fill_tokens(item[k], stats) for k in ('title', 'text', 'desc', 'next') if k in item}}
             result[group].append(resolved)
@@ -157,7 +178,8 @@ def resolve_insights(source, rows, taxonomy):
 
 def complete_weeks(rows, manifest):
     run_time = dt(manifest['run_time_utc'])
-    cutoff = run_time - timedelta(days=manifest['settings']['window_days'])
+    # A merged corpus (pipeline/append_gap.py) records its true start; a single run starts window_days back.
+    cutoff = dt(manifest['window_start_utc']) if manifest.get('window_start_utc') else run_time - timedelta(days=manifest['settings']['window_days'])
     first_full = cutoff.date() + timedelta(days=bool(cutoff.hour or cutoff.minute or cutoff.second or cutoff.microsecond))
     last_full = max(dt(r['date_utc'] + 'T00:00:00Z').date() for r in rows) - timedelta(days=1)
     monday = first_full + timedelta(days=(-first_full.weekday()) % 7)
@@ -216,7 +238,7 @@ PAY_RE = re.compile(r'\bpay|paid|subscri|premium|\$|money|refund|cancel|trial')
 OLD_RE = re.compile(r'used to|old version|bring back|went downhill|got worse|since the (last )?update|after (the )?update|downgrade')
 
 
-def facts(subset, weeks, taxonomy):
+def facts(subset, weeks, taxonomy, both_end=None):
     text = lambda r: f"{r.get('title') or ''} {r.get('review_text') or ''} {r.get('english_translation') or ''}".lower()
     votes_of = lambda r: int(r.get('thumbs_up') or 0)
     complaint, praise = taxonomy['specific_labels'][1], taxonomy['specific_labels'][0]
@@ -232,10 +254,14 @@ def facts(subset, weeks, taxonomy):
     if sum(votes.values()) >= 500:
         total_m, total_v = sum(mentions.values()), sum(votes.values())
         out['votes'] = {'total': total_v, 'by': {c: {'count_pct': mentions[c] / total_m * 100, 'vote_pct': votes[c] / total_v * 100, 'ratio': (votes[c] / total_v) / (mentions[c] / total_m)} for c in mentions if mentions[c] >= 50}}
-    # Which platform each category skews to, against the platform mix of all substantive reviews.
-    ios_base = sum(r['platform'] == 'ios' for r in substantive) / n_sub * 100
+    # Which platform each category skews to, against the platform mix of all substantive reviews. Counted only on
+    # dates both stores cover (through both_end), so a platform with a longer date range cannot shift the share.
+    shared = [r for r in substantive if both_end is None or r['date_utc'] <= both_end]
+    shared_mentions = Counter(c for r in shared for c in r['categories'])
+    ios_base = sum(r['platform'] == 'ios' for r in shared) / (len(shared) or 1) * 100
     if 0 < ios_base < 100:
-        out['skew'] = {'ios_base_pct': ios_base, 'by': {c: {'ios_pct': sum(r['platform'] == 'ios' for r in substantive if c in r['categories']) / mentions[c] * 100, 'count': mentions[c]} for c in mentions if mentions[c] >= 50}}
+        out['skew'] = {'ios_base_pct': ios_base, 'through': both_end, 'n': len(shared),
+                       'by': {c: {'ios_pct': sum(r['platform'] == 'ios' for r in shared if c in r['categories']) / shared_mentions[c] * 100, 'count': shared_mentions[c]} for c in shared_mentions if shared_mentions[c] >= 50}}
     # Complaints that still give five stars, per category.
     comps = [r for r in substantive if r['labels'][0] == complaint]
     if comps:
@@ -321,7 +347,7 @@ def facts(subset, weeks, taxonomy):
     return out
 
 
-def scope_summary(rows, daily, scope, weeks, taxonomy):
+def scope_summary(rows, daily, scope, weeks, taxonomy, both_end=None):
     subset = [r for r in rows if scope == 'all' or r['platform'] == scope]
     substantive = sum(bool(r['categories']) for r in subset)
     stats = statistics(subset, substantive, taxonomy)
@@ -370,7 +396,7 @@ def scope_summary(rows, daily, scope, weeks, taxonomy):
                         for v in range(taxonomy['sentiment_min'], taxonomy['sentiment_max'] + 1)],
             'versions': [{'name': v, 'count': len(group), 'avg_rating': mean([r['rating'] for r in group])} for v, group in sorted(versions.items(), key=lambda x: version_key(x[0])) if len(group) >= 100],
             'competitors': [{'name': name, **statistics([r for r in subset if name in r['competitors']], substantive, taxonomy)} for name in taxonomy['competitors']],
-            'languages': language_rows, 'pain': pain, 'facts': facts(subset, weeks, taxonomy)}
+            'languages': language_rows, 'pain': pain, 'facts': facts(subset, weeks, taxonomy, both_end)}
 
 
 def build(args):
@@ -378,13 +404,24 @@ def build(args):
     rows = read_reviews(args.annotated, taxonomy)
     daily, manifest = read_daily(args.daily), read_json(args.run)
     source = read_json(args.insights)
-    insights = resolve_insights(source, rows, taxonomy)
+    both_end = overlap_end(rows)
+    insights = resolve_insights(source, rows, taxonomy, both_end)
     weeks, first_full, last_full = complete_weeks(rows, manifest)
-    summary = {scope: scope_summary(rows, daily, scope, weeks, taxonomy) for scope in SCOPES}
+    ranges = {p: {'start': min(r['date_utc'] for r in rows if r['platform'] == p), 'end': max(r['date_utc'] for r in rows if r['platform'] == p)}
+              for p in SCOPES[1:] if any(r['platform'] == p for r in rows)}
+    # A platform whose reviews stop earlier only gets the complete weeks it covers (its last day is treated as partial).
+    def weeks_for(scope):
+        if scope == 'all':
+            return weeks
+        last = dt(ranges[scope]['end'] + 'T00:00:00Z').date() - timedelta(days=1)
+        return [w for w in weeks if dt(w + 'T00:00:00Z').date() + timedelta(days=6) <= last]
+    scope_weeks = {scope: weeks_for(scope) for scope in SCOPES if scope == 'all' or scope in ranges}
+    summary = {scope: scope_summary(rows, daily, scope, scope_weeks.get(scope, []), taxonomy, both_end) for scope in SCOPES}
     summary['meta'] = {'run_time': manifest['run_time_utc'], 'generated_at': manifest['run_time_utc'],
                        'generated_at_basis': 'Source run timestamp, fixed for deterministic builds',
                        'date_range': {'start': min(r['date_utc'] for r in rows), 'end': max(r['date_utc'] for r in rows)},
-                       'first_full_day': first_full, 'last_full_day': last_full, 'weeks': weeks,
+                       'first_full_day': first_full, 'last_full_day': last_full, 'weeks': weeks, 'weeks_by_scope': scope_weeks,
+                       'platform_ranges': ranges, 'overlap_end': both_end, 'platform_coverage': manifest.get('platform_coverage'),
                        'gold': gold_figures(args.evaluation), 'platform_totals': {p: summary[p]['stats']['count'] for p in SCOPES[1:]},
                        'taxonomy': {k: taxonomy[k] for k in ('labels', 'categories', 'competitors', 'specific_labels')},
                        'ui': {'zero': 0, 'one': 1, 'two': 2, 'hundred': 100, 'negative_one': -1,

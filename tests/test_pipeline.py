@@ -112,7 +112,7 @@ def test_appstore_schema_failures(payload):
 
 
 def test_dedupe_and_inclusive_window():
-    cutoff = datetime.fromisoformat(RUN_TIME.replace("Z", "+00:00")) - timedelta(days=90)
+    cutoff = datetime.fromisoformat(RUN_TIME.replace("Z", "+00:00")) - timedelta(days=config.WINDOW_DAYS)
     edge = iso_utc(cutoff)
     old = iso_utc(cutoff - timedelta(microseconds=1))
     future = iso_utc(datetime.fromisoformat(RUN_TIME.replace("Z", "+00:00")) + timedelta(seconds=1))
@@ -242,6 +242,30 @@ def test_appstore_limit_requires_successful_previous_page_and_resume(tmp_path):
     assert state["stop_reason"] == "page_limit_http_400"
     assert state["rejected_page"] == 2
     assert scrape_appstore.collect_stream(tmp_path, RUN_TIME, "us", lambda *_: pytest.fail("completed stream fetched")) == state
+
+
+def test_appstore_degraded_feed_fails_loudly(capsys):
+    stream = lambda locale, fetched: {"locale": locale, "rows_fetched": fetched}
+    with pytest.raises(ScrapeError, match="degraded"):
+        scrape_appstore.check_feed_health([stream("us", 50)] + [stream(c, 0) for c in ("gb", "in", "ca")])
+    assert "WARNING: App Store gb" in capsys.readouterr().out
+    # One quiet storefront only warns; the run still publishes.
+    scrape_appstore.check_feed_health([stream("us", 50), stream("gb", 0), stream("in", 50)])
+    assert "WARNING: App Store gb" in capsys.readouterr().out
+    scrape_appstore.check_feed_health([stream("us", 50), stream("gb", 45)])
+
+
+def test_appstore_main_does_not_publish_degraded_feed(tmp_path, monkeypatch):
+    monkeypatch.setattr(scrape_appstore, "arguments", lambda _: SimpleNamespace(data_dir=tmp_path, run_time=RUN_TIME))
+    monkeypatch.setattr(config, "APPSTORE_COUNTRIES", ("us", "gb", "in"))
+    def fake_stream(data_dir, run_time, country):
+        rows = scrape_appstore.parse_feed(fixture("appstore"), country) if country == "us" else []
+        return {"complete": True, "pages_served": 1, "rows_fetched": len(rows), "in_window_rows": len(rows),
+                "next_page": 2, "rows": rows, "stop_reason": "empty_page"}
+    monkeypatch.setattr(scrape_appstore, "collect_stream", fake_stream)
+    with pytest.raises(ScrapeError, match="degraded"):
+        scrape_appstore.main()
+    assert not (tmp_path / "interim" / "appstore.jsonl").exists()
 
 
 def test_appstore_block_keeps_unfinished_checkpoint(tmp_path):

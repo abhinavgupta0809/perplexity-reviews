@@ -12,14 +12,15 @@ from pipeline.annotation_support import load_taxonomy
 from pipeline.common import ScrapeError, dt
 
 ROOT = Path(__file__).resolve().parents[1]
+# Merged corpus: 2026-10-09 run + Android-only append through 2026-10-25 (17,254 reviews).
 EXPECTED_MATCH_COUNTS = {
-    'c_money': 1059, 'c_accuracy': 444, 'c_regression': 235, 'c_lowsignal': 5115, 'c_ios': 424,
-    'i_credits': 202, 'i_free_images': 161, 'i_free_questions': 507, 'i_wrong': 444, 'i_ignores': 73,
-    'i_cancel': 120, 'i_promos': 57, 'i_bugs': 228, 'i_style': 177, 'i_voice': 117, 'i_history': 84,
-    'i_support': 71, 'i_computer': 68, 'i_models': 69, 'i_login': 60, 'i_preinstalled': 63,
-    'f_free_uploads': 89, 'f_pricing': 50, 'f_search': 22, 'f_ui': 21, 'f_voice': 19,
-    'f_threads': 19, 'f_computer': 13, 'f_models': 12,
-    's_research': 556, 's_sources': 550, 's_study': 308, 's_accuracy': 730, 's_speed': 464, 's_models': 44,
+    'c_money': 1211, 'c_accuracy': 507, 'c_regression': 270, 'c_lowsignal': 5858, 'c_ios': 424,
+    'i_credits': 213, 'i_free_images': 184, 'i_free_questions': 592, 'i_wrong': 507, 'i_ignores': 84,
+    'i_cancel': 134, 'i_promos': 62, 'i_bugs': 264, 'i_style': 215, 'i_voice': 132, 'i_history': 96,
+    'i_support': 74, 'i_computer': 72, 'i_models': 77, 'i_login': 64, 'i_preinstalled': 68,
+    'f_free_uploads': 102, 'f_pricing': 60, 'f_search': 25, 'f_ui': 24, 'f_voice': 24,
+    'f_threads': 21, 'f_computer': 15, 'f_models': 14,
+    's_research': 625, 's_sources': 623, 's_study': 368, 's_accuracy': 850, 's_speed': 530, 's_models': 50,
 }
 
 
@@ -119,6 +120,29 @@ def test_complete_weeks_both_edges_and_midnight(rows):
     # A midnight Monday cutoff includes the Monday; final partial day is still excluded.
     manifest['run_time_utc'] = '2026-08-03T00:00:00Z'
     assert site.complete_weeks(rows, manifest)[0] == ['2026-07-13', '2026-07-20', '2026-07-27']
+
+
+def test_platform_share_tokens_use_dates_both_stores_cover(rows, taxonomy):
+    # Android ends Aug 2, iOS Aug 3: shares count only through Aug 2, so the last iOS row is left out.
+    assert site.overlap_end(rows) == '2026-08-02'
+    source = insights_source()
+    source['callouts'][0]['text'] = '{{pct_ios_overlap}} of {{pct_ios_all_overlap}} through {{overlap_end}}'
+    result = site.resolve_insights(source, rows, taxonomy)['callouts'][0]['scopes']
+    # Complaints: one Android, one iOS -> 50%. All rows through Aug 2: 5, of which 2 iOS -> 40%.
+    assert result['all']['text'] == '50% of 40% through Aug 2, 2026'
+    assert result['android']['text'] == result['ios']['text'] == result['all']['text']
+    # Adding Android rows after the overlap cannot move either share.
+    later = [dict(rows[1], review_id=f'play_late-{i}', date_utc='2026-08-20', timestamp='2026-08-20T12:00:00Z') for i in range(5)]
+    # Overlap moves to Aug 3 (iOS's last day); the five later complaints sit outside it, so the complaint share stays 50%.
+    extended = site.resolve_insights(source, rows + later, taxonomy)['callouts'][0]['scopes']['all']
+    assert extended['stats']['count'] == 7 and extended['text'] == '50% of 50% through Aug 3, 2026'
+
+
+def test_complete_weeks_uses_merged_window_start(rows):
+    # A merged corpus records its real start; window_days alone would move the first full day.
+    manifest = {'run_time_utc': '2026-08-03T12:00:00Z', 'window_start_utc': '2026-07-13T06:00:00Z', 'settings': {'window_days': 30}}
+    weeks, first, _ = site.complete_weeks(rows, manifest)
+    assert first == '2026-07-14' and weeks == ['2026-07-20', '2026-07-27']
 
 
 def test_hand_worked_aggregates(rows, taxonomy):

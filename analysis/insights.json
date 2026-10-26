@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Written by Claude from the Oct 9, 2026 annotated corpus. Narrative only. Every number shown on the site comes from running each item's `match` against data/annotated_reviews.csv in build_site_data.py. Tokens in text ({{count}}, {{pct_low_star}}, {{avg_rating}}, {{ios_count}}, {{android_count}}, {{pct_of_substantive}}) are filled from that item's own match. Each improvement, request, and strength also carries a `next` line: the check a PM would run, written by Claude, tokens filled the same way.",
+  "about": "Written by Claude from the Oct 9, 2026 annotated corpus; re-checked on Oct 26, 2026 against the merged corpus (Android through Oct 25, 2026, iPhone through Oct 7, 2026; see data/volume_report.md). Narrative only. Every number shown on the site comes from running each item's `match` against data/annotated_reviews.csv in build_site_data.py. Tokens in text ({{count}}, {{pct_low_star}}, {{avg_rating}}, {{ios_count}}, {{android_count}}, {{pct_of_substantive}}) are filled from that item's own match. {{pct_ios_overlap}} (iPhone share of the item's reviews), {{pct_ios_all_overlap}} (iPhone share of all reviews) and {{overlap_end}} count only dates both stores cover, across both platforms in every scope, so a one-store refresh cannot shift a platform-share claim. Each improvement, request, and strength also carries a `next` line: the check a PM would run, written by Claude, tokens filled the same way.",
   "match_spec": {
     "labels_any": "review has at least one of these labels",
     "categories_any": "review has at least one of these categories",
@@ -33,7 +33,7 @@
     {
       "id": "c_accuracy",
       "placement": "overview",
-      "title": "Accuracy is the largest single complaint",
+      "title": "Accuracy is the largest complaint about the answers",
       "text": "{{count}} reviews say answers were wrong, invented, or missed the question. Average rating {{avg_rating}}.",
       "match": {
         "labels_any": [
@@ -48,7 +48,7 @@
       "id": "c_regression",
       "placement": "overview",
       "title": "\"It used to be better\"",
-      "text": "{{count}} reviewers say the product got worse than it was. {{ios_count}} of them are on iOS, far above iOS's share of the corpus.",
+      "text": "{{count}} reviewers say the product got worse than it was. {{pct_ios_overlap}} of them are on iPhone, against {{pct_ios_all_overlap}} of all reviews, counting dates both stores cover (through {{overlap_end}}).",
       "match": {
         "regression_claim": true
       }
@@ -70,7 +70,7 @@
       "id": "c_ios",
       "placement": "overview",
       "title": "iOS is a small, angrier sample",
-      "text": "Apple's feed returns at most 500 reviews per country, so iOS is thin here and US history starts Jul 29. Read platform comparisons with the review counts beside them.",
+      "text": "Apple's feed returns at most 500 reviews per country, so iOS is thin here and US history starts Jul 29. iPhone reviews stop at {{overlap_end}}: Apple's feed returned almost nothing when this was refreshed on Oct 26, 2026, so only Android was extended. Read platform comparisons with the review counts and date ranges beside them.",
       "match": {
         "labels_any": [
           "Specific Complaint"
@@ -84,7 +84,7 @@
       "id": "i_credits",
       "type": "explore",
       "title": "Paying users run out of credits",
-      "desc": "Subscribers say they hit a credit wall mid-task and are asked to buy more on top of a plan they thought covered everything. Many describe it as a bait and switch. Half of these reviews are on iOS.",
+      "desc": "Subscribers say they hit a credit wall mid-task and are asked to buy more on top of a plan they thought covered everything. Many describe it as a bait and switch. {{pct_ios_overlap}} of these reviews are on iPhone, against {{pct_ios_all_overlap}} of all reviews, counting dates both stores cover (through {{overlap_end}}).",
       "match": {
         "labels_any": [
           "Specific Complaint",
@@ -101,7 +101,7 @@
       "id": "i_free_images",
       "type": "explore",
       "title": "Free tier stops at one photo or one image",
-      "desc": "Free users hit the upload or image-generation cap on the first or second try, often before they've seen the feature work. Several say they can't judge whether Pro is worth it. Almost entirely Android.",
+      "desc": "Free users hit the upload or image-generation cap on the first or second try, often before they've seen the feature work. Several say they can't judge whether Pro is worth it. Only {{pct_ios_overlap}} are on iPhone, against {{pct_ios_all_overlap}} of all reviews (dates both stores cover, through {{overlap_end}}).",
       "match": {
         "labels_any": [
           "Specific Complaint",
@@ -136,7 +136,7 @@
       "id": "i_wrong",
       "type": "fix",
       "title": "Wrong or invented answers",
-      "desc": "Wrong facts, made-up numbers, contradictions, and answers that have to be checked by hand. The most common complaint in the corpus.",
+      "desc": "Wrong facts, made-up numbers, contradictions, and answers that have to be checked by hand. The most common complaint about the answers themselves.",
       "match": {
         "labels_any": [
           "Specific Complaint"
@@ -280,7 +280,7 @@
         ]
       },
       "short": "Support",
-      "next": "Measure time to first human reply on billing tickets and the share closed without a resolution. Most of these overlap with cancel and refund reviews, so one support fix covers both."
+      "next": "Measure time to first human reply on billing tickets and the share closed without a resolution. Many overlap with the cancel and refund reviews, so fixing the cancel path also removes part of this."
     },
     {
       "id": "i_computer",
@@ -480,7 +480,7 @@
     {
       "id": "s_sources",
       "title": "Sources and fresh information",
-      "desc": "Citations, links, and up-to-date answers are the feature praised by name most often.",
+      "desc": "Citations, links, and up-to-date answers are among the features praised by name most often.",
       "match": {
         "labels_any": [
           "Specific Praise"
@@ -557,7 +557,7 @@
     ],
     "Specific Complaint": [
       "Two different angry users: free users stopped by limits, and paying users stopped by credits.",
-      "Reviewers who say the product got worse point most often to accuracy, then to credits and free limits.",
+      "Reviewers who say the product got worse point most often to accuracy, then to credits, with bugs and free limits close behind.",
       "Billing and account complaints are the lowest-rated of all. They're operational, and fixable."
     ],
     "Feature Request": [
@@ -572,11 +572,11 @@
     ]
   },
   "category_notes": {
-    "Answer Accuracy": "The category with the most reviews, and it cuts both ways: heavy praise and the largest block of complaints.",
+    "Answer Accuracy": "The category with the most reviews, and it cuts both ways: heavy praise and the second-largest block of complaints, after free limits.",
     "Search & Sources": "Mostly praise. Sources and current information are what users name when they explain why they chose Perplexity.",
     "Answer Style & Filters": "Clear explanations earn praise. Tone, bias, and refusals earn complaints.",
     "Model Choice": "Praised as a bundle of models; criticized when the choice is limited or overridden.",
-    "Credits & Paid Limits": "Almost entirely complaints, and half of them on iOS. These are paying users.",
+    "Credits & Paid Limits": "Almost entirely complaints, and heavily skewed to iPhone on the dates both stores cover (see the Overview). These are paying users.",
     "Free Limits & Paywall": "The highest-volume pain point. Free users hit a wall early, most often on photos and images.",
     "Pricing & Value": "Split between \"too expensive\" and requests for trials or cheaper tiers.",
     "Billing & Subscription": "Cancellation, refunds, and unexpected charges. The lowest ratings in the corpus.",

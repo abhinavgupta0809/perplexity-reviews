@@ -10,6 +10,18 @@ const nf = (value, digits) => value === null || value === undefined ? 'n/a' : ne
 const pct = value => value === null || value === undefined ? 'n/a' : `${nf(value)}%`;
 const dateText = value => new Date(value).toLocaleDateString('en-US', {year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC'});
 const current = () => summary[state.platform];
+// The two stores can end on different days (a refresh extended one store only). Every date label reads these.
+const platformRanges = () => summary.meta.platform_ranges || {};
+const splitCoverage = () => { const r = platformRanges(); return Boolean(r.android && r.ios && r.android.end !== r.ios.end); };
+const rangeText = platform => `${dateText(platformRanges()[platform].start)} to ${dateText(platformRanges()[platform].end)}`;
+const listText = items => items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
+function coverageNote() {
+  const r = platformRanges(), skipped = summary.meta.platform_coverage?.ios?.not_extended;
+  const why = skipped?.summary && skipped?.checked_on ? ` ${skipped.summary} when this was refreshed on ${dateText(skipped.checked_on)}, so the iPhone side was not extended.` : ' The latest refresh extended Android only.';
+  return `iPhone reviews stop on ${dateText(r.ios.end)}; Android runs to ${dateText(r.android.end)}.${why} Platform shares on this page count only dates both stores cover, through ${dateText(summary.meta.overlap_end)}.`;
+}
+// Appended to time-based chart subtitles so a store that stops early is not read as a drop.
+const weekCoverageNote = () => !splitCoverage() || state.platform === 'android' ? '' : state.platform === 'ios' ? ` · iPhone reviews stop ${dateText(platformRanges().ios.end)}` : ` · iPhone reviews stop ${dateText(platformRanges().ios.end)}, so later weeks are Android only`;
 const sortedGroups = groups => Object.entries(groups).sort((a, b) => b.at(ui.one).count - a.at(ui.one).count || a.at(ui.zero).localeCompare(b.at(ui.zero)));
 const countNote = n => `n=${nf(n)}`;
 let languageNames;
@@ -134,29 +146,43 @@ function takeawayPoints(data, weeks, categories) {
 
   // 2. Pro users pay to hit a different wall.
   const credits = cat('Credits & Paid Limits'), cc = pair('Computer & Agents', 'Credits & Paid Limits'), skC = skew('Credits & Paid Limits'), claude = comp('Claude');
+  // Ratings rank, computed: which areas rate lower than this one (categories with enough reviews to read).
+  const rated = categories.filter(c => ok(c) && c.avg_rating !== null).sort((a, b) => a.avg_rating - b.avg_rating);
+  const lowerThan = c => rated.filter(o => o.avg_rating < c.avg_rating).map(o => o.name.toLowerCase());
+  const rankNote = c => { const lower = lowerThan(c); return !lower.length ? ', the lowest-rated area on the page' : lower.length <= 3 ? `; only ${listText(lower)} rate lower` : ''; };
+  // The iPhone share is counted on dates both stores cover, so a store that runs longer cannot move it.
+  const skewThrough = F.skew?.through && splitCoverage() ? `, counting dates both stores cover (through ${dateText(F.skew.through)})` : '';
   if (ok(credits)) { const claudeCredits = claude?.over?.find(o => o[0] === 'Credits & Paid Limits'), claudeModels = claude?.over?.find(o => o[0] === 'Model Choice');
+    const skewAll = summary.all.facts?.skew, skCAll = skewAll?.by?.['Credits & Paid Limits'];
+    const iphoneHeavy = Boolean(skCAll && skCAll.ios_pct >= 1.5 * skewAll.ios_base_pct);
     points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: 'Pro users pay to hit a different wall',
-      findings: [{source: REV, text: `${nf(complaints(credits))} ${scopeNote}complaints are about credits and paid limits (${r2(credits.avg_rating)} stars, the lowest-rated product area)${skC && all ? `; ${ratePct(skC.ios_pct)}% come from iPhone against ${ratePct(F.skew.ios_base_pct)}% of all substantive reviews` : ''}.`},
+      findings: [{source: REV, text: `${nf(complaints(credits))} ${scopeNote}complaints are about credits and paid limits (${r2(credits.avg_rating)} stars${rankNote(credits)})${skC && all ? `; ${ratePct(skC.ios_pct)}% come from iPhone against ${ratePct(F.skew.ios_base_pct)}% of all substantive reviews${skewThrough}` : ''}.`},
         ...(cc ? [{source: REV, text: `${nf(cc.count)} reviews pair credits with the Computer agent product, ${x(cc.lift)} what chance would give (${r2(cc.avg_rating)} stars): the agent burns the credits the subscription bought.`}] : []),
         ...(claudeCredits ? [{source: REV, text: `Reviews that name Claude are ${x(claudeCredits[2])} over-represented in credit complaints${claudeModels ? ` and ${x(claudeModels[2])} in model-choice complaints` : ''}.`}] : [])],
-      insight: 'Subscribers believed paying would remove limits. It moved the meter onto the agent product Perplexity promotes hardest, and when the meter runs out they name the model vendor they could pay directly instead. The iPhone skew says these are the paying users.',
+      insight: ['Subscribers believed paying would remove limits.', cc ? 'It moved the meter onto the agent product Perplexity promotes hardest' + (claudeCredits ? ', and when the meter runs out they name the model vendor they could pay directly instead.' : '.') : '', iphoneHeavy ? 'The iPhone skew says these are the paying users.' : ''].filter(Boolean).join(' '),
       hypothesis: 'A visible credit meter and a cost estimate before each agent run cut Pro credit complaints and Pro churn more than raising the cap would. Show the estimate to half of Pro users for 60 days and compare cancellations that cite limits.',
       more: opportunityJump('i_credits', 'See the credits opportunity')}); }
 
   // 3. The price complaint comes from fans.
   const price = cat('Pricing & Value'), fp = five('Pricing & Value'), billing = cat('Billing & Subscription');
-  if (ok(price) && fp && F.five_star) {
-    const walls = [['free limits', free], ['credits', credits], ['billing', billing]].filter(([, c]) => ok(c)).map(([n, c]) => `${n} ${r2(c.avg_rating)}`).join(', ');
+  const wallAreas = [['free limits', free], ['credits', credits], ['billing', billing]].filter(([, c]) => ok(c));
+  // The card's claim is that every wall rates below pricing; "far" only when each is at least half a star lower.
+  const wallGap = ok(price) && wallAreas.length ? Math.min(...wallAreas.map(([, c]) => price.avg_rating - c.avg_rating)) : null;
+  if (ok(price) && fp && F.five_star && wallGap !== null && wallGap > 0) {
+    const walls = wallAreas.map(([n, c]) => `${n} ${r2(c.avg_rating)}`).join(', ');
     points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: 'The price complaint comes from fans; the walls make enemies',
       findings: [{source: REV, text: `${ratePct(fp.five_pct)}% of the ${nf(fp.count)} ${scopeNote}pricing complaints give five stars, against ${ratePct(F.five_star.base_pct)}% of all complaints. Pricing & Value averages ${r2(price.avg_rating)} stars.`},
-        ...(walls ? [{source: REV, text: `The walls rate far lower: ${walls} stars.`}] : [])],
+        ...(walls ? [{source: REV, text: `The walls rate ${wallGap >= 0.5 ? 'far ' : ''}lower: ${walls} stars.`}] : [])],
       insight: 'The people who say it is too expensive mostly like the product and are negotiating. The angry reviews are about walls and billing, not the number on the price tag. Perplexity hears "price" and reaches for discounts; the reviews say the price is not the problem for anyone who is actually angry.',
       hypothesis: 'A lower or annual tier converts the five-star price complainers and does nothing for wall complaints. Test a cheaper tier on users who hit a limit and rated 4+ in-app, and separately a limit change on the one-star cohort.',
       more: opportunityJump('f_pricing', 'See the pricing requests')}); }
 
   // 4. The lowest ratings have no human in them.
   const support = cat('Customer Support'), login = cat('Login & Account'), bs = pair('Billing & Subscription', 'Customer Support');
-  if (ok(billing) && bs) { const cancel = insightCount('i_cancel');
+  // The card rests on billing, login and support being the lowest-rated areas; checked, not assumed.
+  const humanAreas = [billing, login, support].filter(ok), bottomNames = rated.slice(0, humanAreas.length).map(c => c.name);
+  const humanBottom = humanAreas.length && humanAreas.every(c => bottomNames.includes(c.name));
+  if (ok(billing) && bs && humanBottom) { const cancel = insightCount('i_cancel');
     points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: 'The lowest ratings come from moments with no human in them, and other users upvote those most',
       findings: [{source: REV, text: `${nf(bs.count)} ${scopeNote}reviews are about billing and support together, ${x(bs.lift)} what chance would give, at ${r2(bs.avg_rating)} stars. Billing ${r2(billing.avg_rating)}${ok(login) ? `, login ${r2(login.avg_rating)}` : ''}${ok(support) ? `, support ${r2(support.avg_rating)}` : ''}: the lowest-rated areas on the page.${cancel ? ` ${nf(cancel)} say they could not cancel or get a refund.` : ''}`},
         ...(votesFor('Customer Support') ? [{source: REV, text: `On Google Play, support complaints get ${votesFor('Customer Support')} their share of helpful votes${votesFor('Speed') ? `; speed praise gets ${votesFor('Speed')}` : ''}.`}] : [])],
@@ -166,7 +192,7 @@ function takeawayPoints(data, weeks, categories) {
 
   // 5. Replies go to the reviews that say the least.
   const R = F.replies, gb = R?.by_label?.['Generic Bad'], scp = R?.by_label?.['Specific Complaint'];
-  if (gb && scp && gb.count >= 100) { const by = R.by_category, rate = name => by[name] ? `${name.toLowerCase().replace(' & account', '').replace(' & subscription', '').replace('customer ', '')} ${ratePct(by[name].rate)}%` : null;
+  if (gb && scp && gb.count >= 100 && gb.rate > scp.rate) { const by = R.by_category, rate = name => by[name] ? `${name.toLowerCase().replace(' & account', '').replace(' & subscription', '').replace('customer ', '')} ${ratePct(by[name].rate)}%` : null;
     points.push({chart: 'about', see: 'What reviews are about', title: 'Perplexity replies to the reviews that say the least',
       findings: [{source: REV, text: `On Google Play, ${ratePct(gb.rate)}% of one-line "bad" reviews with nothing specific in them get a developer reply, against ${ratePct(scp.rate)}% of specific complaints (${nf(R.total)} replies in all).`},
         {source: REV, text: `Reply rate on specific complaints by area: ${['Login & Account', 'Customer Support', 'Billing & Subscription', 'Free Limits & Paywall', 'Answer Accuracy'].map(rate).filter(Boolean).join(', ')}.`}],
@@ -176,7 +202,9 @@ function takeawayPoints(data, weeks, categories) {
 
   // 6. Free users compare to Google; paying users compare to the model vendors.
   const google = comp('Google Search'), chatgpt = comp('ChatGPT'), gemini = comp('Gemini');
-  if (google?.over?.length && claude?.over?.length && chatgpt) {
+  // The title holds only while Claude's top over-representation is about models or money and Google's is not.
+  const moneyOrModels = ['Model Choice', 'Credits & Paid Limits', 'Pricing & Value'];
+  if (google?.over?.length && claude?.over?.length && chatgpt && moneyOrModels.includes(claude.over[0][0]) && !moneyOrModels.includes(google.over[0][0])) {
     points.push({chart: 'competitors', see: 'Competitors named', title: 'Free users compare Perplexity to Google; paying users compare it to the model vendors',
       findings: [{source: REV, text: `Reviews naming Google Search are ${x(google.over[0][2])} over-represented in ${google.over[0][0]} (${nf(google.count)} ${scopeNote}reviews: ${nf(google.praise)} praise, ${nf(google.complaints)} complaints).`},
         {source: REV, text: `Reviews naming Claude are ${x(claude.over[0][2])} over-represented in ${claude.over[0][0]}${chatgpt.over?.[0] ? `; ChatGPT ${x(chatgpt.over[0][2])} in ${chatgpt.over[0][0]}` : ''}${gemini?.over?.[0] ? `; Gemini ${x(gemini.over[0][2])} in ${gemini.over[0][0]}` : ''}. ChatGPT is the most-named rival: ${nf(chatgpt.count)} reviews at ${r2(chatgpt.avg_rating)} stars.`}],
@@ -255,7 +283,7 @@ function overview() {
   const weekLabels = weeks.map(w => new Date(w.week).toLocaleDateString('en-US', {month: 'short', day: 'numeric', timeZone: 'UTC'}));
   const trend = node('div', undefined, 'grid');
   trend.append(chartCard({id: 'weekly', span: 12, kind: 'combo', height: 340, title: 'Volume and rating by week', takeaways: backlinks('weekly'),
-    subtitle: `Bars count reviews on the left axis; lines show average stars and sentiment on the right, fixed at 1 to 5 · complete weeks, Monday start · ${countNote(s.weekly_n)}`,
+    subtitle: `Bars count reviews on the left axis; lines show average stars and sentiment on the right, fixed at 1 to 5 · complete weeks, Monday start · ${countNote(s.weekly_n)}${weekCoverageNote()}`,
     data: {labels: weekLabels, volume: weeks.map(w => w.volume), stars: weeks.map(w => w.avg_rating), sentiment: weeks.map(w => w.avg_sentiment)},
     table: {columns: ['Week of', 'Reviews', 'Average stars', 'Average sentiment'], rows: weeks.map((w, i) => [weekLabels[i], nf(w.volume), nf(w.avg_rating, ui.rating_digits), nf(w.avg_sentiment, ui.rating_digits)])}}));
   root.append(sectionHeading('How reviews trend'), trend);
@@ -298,7 +326,7 @@ function overview() {
 
   const platforms = scopes.filter(p => p !== 'all');
   const compare = node('div', undefined, 'grid');
-  compare.append(chartCard({id: 'platform-mix', span: 6, kind: 'stackedBars', height: 210, title: 'Label mix by platform', takeaways: backlinks('platform-mix'), subtitle: 'Share of each first label · always shows both platforms',
+  compare.append(chartCard({id: 'platform-mix', span: 6, kind: 'stackedBars', height: 210, title: 'Label mix by platform', takeaways: backlinks('platform-mix'), subtitle: `Share of each first label · always shows both platforms${splitCoverage() ? ` · Android ${rangeText('android')}, iPhone ${rangeText('ios')}` : ''}`,
     data: {percent: true, labels: platforms.map(p => `${platformName(p)} (${countNote(summary[p].stats.count)})`), series: LABEL_ORDER.map(name => ({name, token: colorForLabel(name), values: platforms.map(p => summary[p].labels[name].pct_of_scope)}))},
     table: {columns: ['Label', ...platforms.map(platformName)], rows: LABEL_ORDER.map(name => [name, ...platforms.map(p => `${nf(summary[p].labels[name].pct_of_scope, 1)}% (${nf(summary[p].labels[name].count)})`)])}}));
   const mismatch = node('section', undefined, 'chart-card span-6'); const mismatchHead = node('div', undefined, 'chart-header'), mismatchTitle = node('div');
@@ -315,7 +343,7 @@ function overview() {
     over.append(chartCard({id: 'versions', span: 6, kind: 'line', height: 280, title: 'Stars by Android version', takeaways: backlinks('versions'), subtitle: `Versions with ${nf(ui.hundred)} or more reviews, in release order · y-axis starts at 3.5 · larger points have more reviews`,
       data: {labels: data.versions.map(v => v.name), values: data.versions.map(v => v.avg_rating), token: '--stars', min: 3.5, max: 5, digits: 1, name: 'Mean stars', radii: data.versions.map(v => 3 + 5 * Math.sqrt(v.count / most)), notes: data.versions.map(v => countNote(v.count))},
       table: {columns: ['Version', 'Mean stars', 'Reviews'], rows: data.versions.map(v => [v.name, nf(v.avg_rating, ui.rating_digits), nf(v.count)])}})); }
-  over.append(chartCard({span: showVersions ? 6 : 12, kind: 'line', height: 280, title: '"It got worse" per week', subtitle: `Reviews that say the product declined · complete weeks · ${countNote(weeks.reduce((sum, w) => sum + w.regression, 0))}`,
+  over.append(chartCard({span: showVersions ? 6 : 12, kind: 'line', height: 280, title: '"It got worse" per week', subtitle: `Reviews that say the product declined · complete weeks · ${countNote(weeks.reduce((sum, w) => sum + w.regression, 0))}${weekCoverageNote()}`,
     data: {labels: weekLabels, values: weeks.map(w => w.regression), token: '--complaint', fill: true, name: 'Reviews'},
     table: {columns: ['Week of', 'Reviews'], rows: weeks.map((w, i) => [weekLabels[i], nf(w.regression)])}}));
   root.append(sectionHeading('Over releases and time'), over);
@@ -567,8 +595,10 @@ function initControls() {
 async function boot() {
   try {
     summary = await fetchJSON('data/summary.json'); ui = summary.meta.ui; renderEpoch = ui.zero; state.deepPage = state.reviewPage = ui.one; resetReviewFilters();
-    const meta = summary.meta; $('#subtitle').textContent = `${nf(summary.all.stats.count)} reviews · Google Play and App Store · ${dateText(meta.date_range.start)} to ${dateText(meta.date_range.end)}`;
-    $('#footer').append(node('p', `Public Google Play and App Store reviews · Android ${nf(meta.platform_totals.android)} / iOS ${nf(meta.platform_totals.ios)} · ${dateText(meta.date_range.start)} to ${dateText(meta.date_range.end)} (UTC).`), node('p', `Labels and sentiment by an LLM, scored against ${nf(meta.gold.n)} hand-labeled reviews. Sentiment averages exclude ${nf(summary.all.stats.nonsense_count)} Nonsense reviews; store-star averages and review counts include them. Primary label agreement ${nf(meta.gold.primary_label.pct, ui.rating_digits)}% (${meta.gold.primary_label.matches}/${meta.gold.primary_label.n}); category agreement ${nf(meta.gold.primary_category.pct, ui.rating_digits)}% (${meta.gold.primary_category.matches}/${meta.gold.primary_category.n}).`), node('p', `Independent, unofficial analysis of public store reviews. Generated ${dateText(meta.generated_at.split('T').at(ui.zero))} from the source run timestamp.`));
+    const meta = summary.meta, split = splitCoverage();
+    $('#subtitle').textContent = split ? `${nf(summary.all.stats.count)} reviews · Google Play ${rangeText('android')} · App Store ${rangeText('ios')}` : `${nf(summary.all.stats.count)} reviews · Google Play and App Store · ${dateText(meta.date_range.start)} to ${dateText(meta.date_range.end)}`;
+    if (split) { $('#coverage').textContent = coverageNote(); $('#coverage').hidden = false; }
+    $('#footer').append(node('p', split ? `Public Google Play and App Store reviews · Android ${nf(meta.platform_totals.android)}, ${rangeText('android')} / iOS ${nf(meta.platform_totals.ios)}, ${rangeText('ios')} (UTC).` : `Public Google Play and App Store reviews · Android ${nf(meta.platform_totals.android)} / iOS ${nf(meta.platform_totals.ios)} · ${dateText(meta.date_range.start)} to ${dateText(meta.date_range.end)} (UTC).`), node('p', `Labels and sentiment by an LLM, scored against ${nf(meta.gold.n)} hand-labeled reviews. Sentiment averages exclude ${nf(summary.all.stats.nonsense_count)} Nonsense reviews; store-star averages and review counts include them. Primary label agreement ${nf(meta.gold.primary_label.pct, ui.rating_digits)}% (${meta.gold.primary_label.matches}/${meta.gold.primary_label.n}); category agreement ${nf(meta.gold.primary_category.pct, ui.rating_digits)}% (${meta.gold.primary_category.matches}/${meta.gold.primary_category.n}).`), node('p', `Independent, unofficial analysis of public store reviews. Generated ${dateText(meta.generated_at.split('T').at(ui.zero))} from the source run timestamp.`));
     insights = await fetchJSON('data/insights.json'); hashState(); initControls(); await renderPage();
   } catch (error) { $('#content').replaceChildren(errorView(error)); }
 }

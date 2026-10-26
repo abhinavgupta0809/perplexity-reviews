@@ -1,8 +1,23 @@
 {
-  "run_time_utc": "2026-10-09T06:03:20Z",
+  "run_time_utc": "2026-10-25T23:59:59Z",
+  "window_start_utc": "2026-07-11T06:03:20Z",
+  "platform_coverage": {
+    "android": {
+      "through_run_utc": "2026-10-25T23:59:59Z"
+    },
+    "ios": {
+      "through_run_utc": "2026-10-09T06:03:20Z",
+      "not_extended": {
+        "run_time_utc": "2026-10-25T23:59:59Z",
+        "note": "Not extended because Apple's App Store review feed returned almost nothing on 2026-10-26: across eight attempts from about 06:37 to 07:53 UTC, 11 to 15 of the 15 storefronts returned an empty first page each time, and the US feed never reached back to the previous run's newest iPhone review (2026-10-07T16:30:17Z).",
+        "summary": "Apple's review feed returned almost nothing",
+        "checked_on": "2026-10-26"
+      }
+    }
+  },
   "settings": {
-    "window_days": 90,
-    "max_rows": 20000,
+    "window_days": 107,
+    "max_rows": 30000,
     "seed": 42,
     "play_langs": [
       "en",
@@ -68,5 +83,159 @@
     ],
     "play_app_id": "ai.perplexity.app.android",
     "appstore_id": "1668000334"
-  }
+  },
+  "composition": [
+    {
+      "run_time_utc": "2026-10-09T06:03:20Z",
+      "settings": {
+        "window_days": 90,
+        "max_rows": 20000,
+        "seed": 42,
+        "play_langs": [
+          "en",
+          "es",
+          "pt",
+          "fr",
+          "ar",
+          "id",
+          "ru",
+          "de",
+          "ko",
+          "it",
+          "th",
+          "vi",
+          "tr",
+          "ja",
+          "hi",
+          "nl",
+          "pl",
+          "sv",
+          "da",
+          "nb",
+          "fi",
+          "cs",
+          "el",
+          "hu",
+          "ro",
+          "uk",
+          "bg",
+          "hr",
+          "sk",
+          "sr",
+          "iw",
+          "fa",
+          "ur",
+          "bn",
+          "ta",
+          "te",
+          "mr",
+          "ms",
+          "fil",
+          "zh-TW",
+          "zh-CN",
+          "ca"
+        ],
+        "play_country": "us",
+        "appstore_countries": [
+          "us",
+          "gb",
+          "in",
+          "ca",
+          "au",
+          "de",
+          "fr",
+          "es",
+          "br",
+          "mx",
+          "jp",
+          "kr",
+          "id",
+          "sg",
+          "ae"
+        ],
+        "play_app_id": "ai.perplexity.app.android",
+        "appstore_id": "1668000334"
+      },
+      "rows": 14791,
+      "role": "base"
+    },
+    {
+      "run_time_utc": "2026-10-25T23:59:59Z",
+      "settings": {
+        "window_days": 90,
+        "max_rows": 20000,
+        "seed": 42,
+        "play_langs": [
+          "en",
+          "es",
+          "pt",
+          "fr",
+          "ar",
+          "id",
+          "ru",
+          "de",
+          "ko",
+          "it",
+          "th",
+          "vi",
+          "tr",
+          "ja",
+          "hi",
+          "nl",
+          "pl",
+          "sv",
+          "da",
+          "nb",
+          "fi",
+          "cs",
+          "el",
+          "hu",
+          "ro",
+          "uk",
+          "bg",
+          "hr",
+          "sk",
+          "sr",
+          "iw",
+          "fa",
+          "ur",
+          "bn",
+          "ta",
+          "te",
+          "mr",
+          "ms",
+          "fil",
+          "zh-TW",
+          "zh-CN",
+          "ca"
+        ],
+        "play_country": "us",
+        "appstore_countries": [
+          "us",
+          "gb",
+          "in",
+          "ca",
+          "au",
+          "de",
+          "fr",
+          "es",
+          "br",
+          "mx",
+          "jp",
+          "kr",
+          "id",
+          "sg",
+          "ae"
+        ],
+        "play_app_id": "ai.perplexity.app.android",
+        "appstore_id": "1668000334"
+      },
+      "rows": 2463,
+      "platforms": [
+        "android"
+      ],
+      "late_ids_included": false,
+      "role": "appended (new IDs only)"
+    }
+  ]
 }

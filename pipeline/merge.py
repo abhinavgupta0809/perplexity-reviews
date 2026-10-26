@@ -140,13 +140,13 @@ def volume_report(before, after, run_time, metadata):
     return "\n\n".join(sections) + "\n"
 
 
-def load_sources(data_dir, run_time):
+def load_sources(data_dir, run_time, sources=("play", "appstore")):
     all_rows, metadata = [], {}
     expected = {
         "play": list(config.PLAY_LANGS),
         "appstore": list(config.APPSTORE_COUNTRIES),
     }
-    for source in ("play", "appstore"):
+    for source in sources:
         path = data_dir / "interim" / f"{source}.jsonl"
         meta = read_json(path.with_suffix(".meta.json"))
         if not meta.get("complete") or meta.get("run_time_utc") != run_time:

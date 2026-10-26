@@ -13,8 +13,10 @@ python3.11 -m venv .venv
 .venv/bin/python -m pipeline.merge
 ```
 
-`pipeline/config.py` defines application IDs, Play language and iOS storefront order, the 90-day window,
-20,000-row cap, seed, page size, delays, retries, and timeouts. Dependencies,
+`pipeline/config.py` defines application IDs, Play language and iOS storefront order, the window
+(107 days), row cap (30,000), seed, page size, delays, retries, and timeouts. Runs 1 and 2 used a
+90-day window and a 20,000 cap; both were raised on 2026-10-26 so the config describes the merged
+corpus (see "Appending a later scrape" below). No run has hit the cap. Dependencies,
 including transitive dependencies, are pinned in `requirements.txt`.
 
 The first scraper creates `data/run.json` with one UTC run time shared by both
@@ -57,6 +59,9 @@ Coverage is limited to what the configured locale feeds expose. App Store feeds
 can stop at a page limit before covering all 90 days; an HTTP 400/404 beyond page
 one is treated as a page boundary only if the previous page still succeeds.
 HTTP 403/429 and server/network failures are never accepted as normal exhaustion.
+A degraded feed answers HTTP 200 with no entries, which looks like a quiet storefront: the App
+Store scraper warns for every storefront whose first page is empty and exits nonzero, without
+publishing, when every storefront after the first is empty (seen on 2026-10-26).
 Daily true counts describe the retrieved corpus, not all reviews on the stores.
 Country is an iOS retrieval storefront, not reviewer residence. `store_lang` is
 the Play request code, not an inferred review language. No code is replaced when
@@ -140,6 +145,36 @@ runs it after Claude signs off on gold agreement:
 No full paid annotation was run during phase 02. Missing credentials skip the
 live gold check as specified by the handover; offline fake-client tests cover the
 client contract and evaluator without claiming live model agreement.
+
+## Appending a later scrape (2026-10-26 refresh)
+
+The published corpus in `data/` is no longer a single run. It is the run of 2026-10-09T06:03:20Z
+(unchanged rows and labels) plus an **Android-only** append through 2026-10-25T23:59:59Z:
+
+```sh
+.venv/bin/python -m pipeline.scrape_play --data-dir data.gap-2026-10-25 --run-time 2026-10-25T23:59:59Z
+.venv/bin/python -m pipeline.append_gap --gap-dir data.gap-2026-10-25 --platforms android --dry-run
+.venv/bin/python -m pipeline.append_gap --gap-dir data.gap-2026-10-25 --platforms android \
+  --not-extended-note "..." --not-extended-summary "..." --not-extended-checked-on 2026-10-26
+.venv/bin/python -m pipeline.annotate --dry-run
+.venv/bin/python -m pipeline.annotate --yes --max-cost 8
+.venv/bin/python -m pipeline.build_site_data
+```
+
+`append_gap` adds only review IDs the base lacks, dated after the base's newest review on that
+platform; it never resamples. New IDs dated inside the base's coverage (99 Play IDs from Sep 30
+to Oct 2) are left out unless `--include-late` is passed, so days the base already reported keep
+their counts. It recomputes `daily_true_counts.csv` from the merged corpus, writes a new
+`run.json` (true `window_start_utc`, per-platform `platform_coverage`, and a `composition` list of
+both runs) and puts an append section on top of `volume_report.md`. The annotation cache is
+keyed by text, so only new texts are sent.
+
+iPhone reviews stop on 2026-10-07: Apple's review feed returned almost nothing on 2026-10-26
+(eight attempts, 11 to 15 of 15 storefronts empty each time), so the App Store side was not
+extended. The site reads per-platform date ranges from `summary.json`, shows a coverage note,
+limits iPhone charts to the weeks iPhone covers, and computes every iPhone-share claim only on
+dates both stores cover. `data.gap-2026-10-25/` (gitignored) keeps the later Play pull and all
+App Store attempt logs.
 
 ## Deploy
 

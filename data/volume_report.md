@@ -1,4 +1,89 @@
-# Review volume report
+# Review volume report (merged corpus)
+
+Corpus window: 2026-07-11T06:03:20Z through 2026-10-25T23:59:59Z, inclusive, for android; ios keeps the base run's coverage (through 2026-10-09T06:03:20Z). Uncapped: every review kept, nothing sampled.
+
+Built by appending a later scrape (run time 2026-10-25T23:59:59Z) to the base corpus (run time 2026-10-09T06:03:20Z) with pipeline/append_gap.py. Base rows and their annotations are unchanged. Only review IDs absent from the base, dated after the base's newest review on their platform, were added.
+
+Not extended: ios. Not extended because Apple's App Store review feed returned almost nothing on 2026-10-26: across eight attempts from about 06:37 to 07:53 UTC, 11 to 15 of the 15 storefronts returned an empty first page each time, and the US feed never reached back to the previous run's newest iPhone review (2026-10-07T16:30:17Z).
+
+## Merged corpus
+
+| Platform | Reviews | First day | Last day |
+| --- | --- | --- | --- |
+| android | 16167 | 2026-07-11 | 2026-10-25 |
+| ios | 1087 | 2026-07-11 | 2026-10-07 |
+
+## Kept from the base run
+
+| Platform | Reviews | First day | Last day |
+| --- | --- | --- | --- |
+| android | 13704 | 2026-07-11 | 2026-10-08 |
+| ios | 1087 | 2026-07-11 | 2026-10-07 |
+
+Newest base review per platform: android 2026-10-08T06:01:23Z, ios 2026-10-07T16:30:17Z.
+
+## Added from the later run
+
+| Platform | Reviews | First day | Last day |
+| --- | --- | --- | --- |
+| android | 2463 | 2026-10-08 | 2026-10-25 |
+| ios | 0 |  |  |
+
+99 further new IDs are dated at or before the base's newest review on their platform (published by the store after the base scrape). They were left out, so counts for days the base already reported do not change.
+
+Later-run feed coverage per stream (rows fetched, in-window rows for the later run's own 90-day pull, stop reason):
+
+| Stream | Fetched | In window | Stop |
+| --- | --- | --- | --- |
+| en | 6000 | 5701 | window_edge |
+| es | 2200 | 1885 | window_edge |
+| pt | 1400 | 1161 | window_edge |
+| fr | 2000 | 1717 | window_edge |
+| ar | 1000 | 773 | window_edge |
+| id | 800 | 566 | window_edge |
+| ru | 600 | 268 | window_edge |
+| de | 400 | 194 | window_edge |
+| ko | 400 | 148 | window_edge |
+| it | 400 | 121 | window_edge |
+| th | 400 | 106 | window_edge |
+| vi | 400 | 106 | window_edge |
+| tr | 400 | 122 | window_edge |
+| ja | 400 | 66 | window_edge |
+| hi | 400 | 15 | window_edge |
+| nl | 312 | 25 | window_edge |
+| pl | 400 | 69 | window_edge |
+| sv | 127 | 11 | no_continuation |
+| da | 51 | 1 | no_continuation |
+| nb | 54 | 4 | no_continuation |
+| fi | 55 | 5 | no_continuation |
+| cs | 385 | 21 | window_edge |
+| el | 186 | 16 | no_continuation |
+| hu | 312 | 15 | window_edge |
+| ro | 273 | 32 | window_edge |
+| uk | 400 | 8 | window_edge |
+| bg | 95 | 8 | no_continuation |
+| hr | 150 | 12 | no_continuation |
+| sk | 101 | 6 | no_continuation |
+| sr | 95 | 12 | no_continuation |
+| iw | 236 | 18 | window_edge |
+| fa | 600 | 270 | window_edge |
+| ur | 15 | 0 | window_edge |
+| bn | 59 | 11 | no_continuation |
+| ta | 33 | 1 | no_continuation |
+| te | 30 | 1 | no_continuation |
+| mr | 43 | 2 | no_continuation |
+| ms | 77 | 8 | no_continuation |
+| fil | 3 | 0 | window_edge |
+| zh-TW | 400 | 80 | window_edge |
+| zh-CN | 400 | 69 | window_edge |
+| ca | 60 | 3 | no_continuation |
+
+`daily_true_counts.csv` is recomputed from the merged corpus. Days up to the base run reflect the base scrape; later days reflect the later scrape for the appended platforms only.
+
+---
+
+# Base run report (unchanged, as generated at the base run)
+
 
 Run time UTC: 2026-10-09T06:03:20Z
 

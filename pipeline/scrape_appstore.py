@@ -117,6 +117,23 @@ def collect_stream(data_dir, run_time, country, fetch=fetch_page, sleep=time.sle
     return state
 
 
+def check_feed_health(streams):
+    """Refuse to publish when the feed looks degraded rather than exhausted.
+
+    A degraded RSS feed answers HTTP 200 with no entries at all, which reads like a quiet
+    storefront. One quiet storefront is plausible; every storefront after the first going
+    empty on page one is not (seen on 2026-10-26, when only the US feed served a page).
+    """
+    empty = [s["locale"] for s in streams if s["rows_fetched"] == 0]
+    for locale in empty:
+        print(f"WARNING: App Store {locale}: first page returned no entries at all", flush=True)
+    if len(streams) > 1 and all(s["rows_fetched"] == 0 for s in streams[1:]):
+        raise ScrapeError(
+            "App Store: every storefront after the first returned an empty feed; the feed looks "
+            "degraded, output not published. Clear interim/.checkpoints/appstore to retry later"
+        )
+
+
 def main():
     args = arguments(__doc__)
     run_time = ensure_run(args.data_dir, args.run_time)
@@ -130,6 +147,7 @@ def main():
         streams.append({key: value for key, value in state.items() if key not in ("rows", "next_page")}
                        | {"locale": country, "unique_added": added})
         print(f"App Store {country}: {len(state['rows'])} unique in-window rows, {added} newly added", flush=True)
+    check_feed_health(streams)
     publish_source(args.data_dir, "appstore", all_rows, streams, run_time)
 
 
