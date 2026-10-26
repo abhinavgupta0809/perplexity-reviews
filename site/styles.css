@@ -314,6 +314,9 @@ body.drawer-open { overflow: hidden; }
   .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 14px; }
   #drawer { padding: 0 16px 24px; border-left: 0; }
   .controls { gap: 8px; }
+  /* Four tabs fit a 358px row without clipping the last one. */
+  #tabs { gap: 0; }
+  #tabs button { padding: 8px 9px; }
   .segmented button { padding: 5px 9px; }
   .opportunity-grid { grid-template-columns: 1fr; }
 }

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Written by Claude from the Oct 9, 2026 annotated corpus; re-checked on Oct 26, 2026 against the merged corpus (Android through Oct 25, 2026, iPhone through Oct 7, 2026; see data/volume_report.md). Narrative only. Every number shown on the site comes from running each item's `match` against data/annotated_reviews.csv in build_site_data.py. Tokens in text ({{count}}, {{pct_low_star}}, {{avg_rating}}, {{ios_count}}, {{android_count}}, {{pct_of_substantive}}) are filled from that item's own match. {{pct_ios_overlap}} (iPhone share of the item's reviews), {{pct_ios_all_overlap}} (iPhone share of all reviews) and {{overlap_end}} count only dates both stores cover, across both platforms in every scope, so a one-store refresh cannot shift a platform-share claim. Each improvement, request, and strength also carries a `next` line: the check a PM would run, written by Claude, tokens filled the same way.",
+  "about": "Written by Claude from the Oct 9, 2026 annotated corpus; re-checked on Oct 26, 2026 against the merged corpus (Android through Oct 25, 2026, iPhone through Oct 7, 2026; see data/volume_report.md). Narrative only. Every number shown on the site comes from running each item's `match` against data/annotated_reviews.csv in build_site_data.py. Tokens in text ({{count}}, {{pct_low_star}}, {{avg_rating}}, {{ios_count}}, {{android_count}}, {{pct_of_substantive}}) are filled from that item's own match. {{pct_ios_overlap}} (iPhone share of the item's reviews), {{pct_ios_all_overlap}} (iPhone share of all reviews), {{pct_ios_substantive_overlap}} (iPhone share of substantive reviews, the baseline for items built from them) and {{overlap_end}} count only dates both stores cover, across both platforms in every scope, so a one-store refresh cannot shift a platform-share claim. Each improvement, request, and strength also carries a `next` line: the check a PM would run, written by Claude, tokens filled the same way.",
   "match_spec": {
     "labels_any": "review has at least one of these labels",
     "categories_any": "review has at least one of these categories",
@@ -69,8 +69,8 @@
     {
       "id": "c_ios",
       "placement": "overview",
-      "title": "iOS is a small, angrier sample",
-      "text": "Apple's feed returns at most 500 reviews per country, so iOS is thin here and US history starts Jul 29. iPhone reviews stop at {{overlap_end}}: Apple's feed returned almost nothing when this was refreshed on Oct 26, 2026, so only Android was extended. Read platform comparisons with the review counts and date ranges beside them.",
+      "title": "iPhone is a small, angrier sample",
+      "text": "Apple's feed returns at most 500 reviews per country, so iPhone is thin here and US history starts Jul 29. iPhone reviews stop at {{overlap_end}}: Apple's feed returned almost nothing when this was refreshed on Oct 26, 2026, so only Android was extended. Read platform comparisons with the review counts and date ranges beside them.",
       "match": {
         "labels_any": [
           "Specific Complaint"
@@ -84,7 +84,7 @@
       "id": "i_credits",
       "type": "explore",
       "title": "Paying users run out of credits",
-      "desc": "Subscribers say they hit a credit wall mid-task and are asked to buy more on top of a plan they thought covered everything. Many describe it as a bait and switch. {{pct_ios_overlap}} of these reviews are on iPhone, against {{pct_ios_all_overlap}} of all reviews, counting dates both stores cover (through {{overlap_end}}).",
+      "desc": "Subscribers say they hit a credit wall mid-task and are asked to buy more on top of a plan they thought covered everything. Many describe it as a bait and switch. {{pct_ios_overlap}} of these reviews are on iPhone, against {{pct_ios_substantive_overlap}} of all substantive reviews, counting dates both stores cover (through {{overlap_end}}).",
       "match": {
         "labels_any": [
           "Specific Complaint",
@@ -95,13 +95,13 @@
         ]
       },
       "short": "Credits run out",
-      "next": "Pull credit-balance telemetry for Pro users: what share reach zero before the cycle ends, and on which day. Then test showing the estimated cost before a run starts; the Run Receipt prototype shows one way."
+      "next": "Pull credit telemetry for paying users: how often Pro users hit the weekly Computer usage limit, how fast Max users spend their monthly credits, and what share of either runs out mid-task. Then test showing the estimated cost before a run starts; the Run Receipt prototype shows one way."
     },
     {
       "id": "i_free_images",
       "type": "explore",
-      "title": "Free tier stops at one photo or one image",
-      "desc": "Free users hit the upload or image-generation cap on the first or second try, often before they've seen the feature work. Several say they can't judge whether Pro is worth it. Only {{pct_ios_overlap}} are on iPhone, against {{pct_ios_all_overlap}} of all reviews (dates both stores cover, through {{overlap_end}}).",
+      "title": "Reviewers say the free tier stops at one photo or image",
+      "desc": "Free users say they hit the upload or image-generation cap on the first or second try, often before they've seen the feature work. Several say they can't judge whether Pro is worth it. Only {{pct_ios_overlap}} are on iPhone, against {{pct_ios_substantive_overlap}} of all substantive reviews (dates both stores cover, through {{overlap_end}}).",
       "match": {
         "labels_any": [
           "Specific Complaint",
@@ -181,7 +181,7 @@
         "pattern": "cancel|refund|unauthor|charged|charge|unsubscrib|renew"
       },
       "short": "Cancel and refunds",
-      "next": "Count cancel attempts that start in the app and end on a store support page. Add a visible cancel path that deep-links to the store subscription screen, and set a refund SLA. {{pct_low_star}} of these reviews are at 1 or 2 stars, so this is the cheapest rating gain on the page."
+      "next": "Count cancel attempts that start in the app and end on a store support page. Add a visible cancel path that deep-links to the store subscription screen, and set a refund SLA. {{pct_low_star}} of these reviews are at 1 or 2 stars."
     },
     {
       "id": "i_promos",
@@ -377,7 +377,7 @@
           "Pricing & Value"
         ]
       },
-      "next": "These requests come from reviewers who still rate the app well. Test a student price and a regional price in two markets and read conversion and 90-day retention before rolling either out."
+      "next": "These requests come from reviewers who still rate the app well. Education Pro already exists, so first check whether reviewers asking for a student price know about it. Then test a regional price in two markets and read conversion and 90-day retention before rolling it out."
     },
     {
       "id": "f_search",
@@ -501,7 +501,7 @@
         ],
         "pattern": "stud|school|homework|exam|student|tarea|estudi|devoir|étud|escola|belajar|tugas"
       },
-      "next": "Students are a named segment. Test the student price requested above against this group's retention."
+      "next": "Students are a named segment. Check whether they know Education Pro exists, and compare this group's retention with verified Education Pro users."
     },
     {
       "id": "s_accuracy",
@@ -576,7 +576,7 @@
     "Search & Sources": "Mostly praise. Sources and current information are what users name when they explain why they chose Perplexity.",
     "Answer Style & Filters": "Clear explanations earn praise. Tone, bias, and refusals earn complaints.",
     "Model Choice": "Praised as a bundle of models; criticized when the choice is limited or overridden.",
-    "Credits & Paid Limits": "Almost entirely complaints, and heavily skewed to iPhone on the dates both stores cover (see the Overview). These are paying users.",
+    "Credits & Paid Limits": "Almost entirely complaints, and heavily skewed to iPhone on the dates both stores cover (see the Overview). Most read like paying users.",
     "Free Limits & Paywall": "The highest-volume pain point. Free users hit a wall early, most often on photos and images.",
     "Pricing & Value": "Split between \"too expensive\" and requests for trials or cheaper tiers.",
     "Billing & Subscription": "Cancellation, refunds, and unexpected charges. The lowest ratings in the corpus.",

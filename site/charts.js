@@ -14,7 +14,8 @@ const css = token => getComputedStyle(document.documentElement).getPropertyValue
 const fade = (color, amount) => { const hex = color.replace('#', ''); const [r, g, b] = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16)); return Number.isNaN(r + g + b) ? color : `rgba(${r}, ${g}, ${b}, ${amount})`; };
 const node = (tag, text, className) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (className) el.className = className; return el; };
 const int = value => value === null || value === undefined ? 'n/a' : Math.round(value).toLocaleString('en-US');
-const dec = (value, digits = 2) => value === null || value === undefined ? 'n/a' : value.toFixed(digits);
+// Same formatter as the page copy in app.js (Intl), so a chart and a card never round the same value differently.
+const dec = (value, digits = 2) => value === null || value === undefined ? 'n/a' : new Intl.NumberFormat('en-US', {minimumFractionDigits: digits, maximumFractionDigits: digits}).format(value);
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const sans = () => getComputedStyle(document.body).fontFamily;
 const mono = () => css('--font-mono') || 'monospace';
@@ -99,13 +100,17 @@ export const builders = {
       steps.forEach((step, i) => { const next = steps[i + 1]; if (!next || step.link === undefined) return;
         const a = meta.data[i], b = meta.data[i + 1]; const y = chart.scales.y.getPixelForValue(step.link);
         ctx.beginPath(); ctx.moveTo(a.x + a.width / 2, y); ctx.lineTo(b.x - b.width / 2, y); ctx.stroke(); });
-      ctx.setLineDash([]); ctx.font = `500 12px ${mono()}`; ctx.fillStyle = t.text1; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      steps.forEach((step, i) => { const bar = meta.data[i]; const top = chart.scales.y.getPixelForValue(Math.max(step.start, step.end)); ctx.fillText(`${step.sign || ''}${int(step.value)}`, bar.x, top - 6); });
+      // On a narrow chart each column is too thin for "17,254", so values switch to a compact form (17k, 5.9k). Tooltips and the table keep exact values.
+      const narrow = chart.width < 520, compact = v => v >= 1000 ? `${new Intl.NumberFormat('en-US', {maximumFractionDigits: v >= 10000 ? 0 : 1}).format(v / 1000)}k` : int(v);
+      ctx.setLineDash([]); ctx.font = `500 ${narrow ? 10 : 12}px ${mono()}`; ctx.fillStyle = t.text1; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      steps.forEach((step, i) => { const bar = meta.data[i]; const top = chart.scales.y.getPixelForValue(Math.max(step.start, step.end)); ctx.fillText(`${step.sign || ''}${narrow ? compact(step.value) : int(step.value)}`, bar.x, top - 6); });
       ctx.restore();
     }};
-    return {type: 'bar', plugins: [connectors], data: {labels: steps.map(s => wrapLabel(s.name, 12)), datasets: [{label: 'Reviews', data: steps.map(s => [s.start, s.end]),
+    // Phones get one-line labels turned upright, one per column, instead of wrapped labels that overlap at an angle.
+    const phone = matchMedia('(max-width: 639px)').matches;
+    return {type: 'bar', plugins: [connectors], data: {labels: steps.map(s => phone ? s.name : wrapLabel(s.name, 12)), datasets: [{label: 'Reviews', data: steps.map(s => [s.start, s.end]),
       backgroundColor: steps.map(s => fade(css(s.token), s.strength)), borderRadius: 4, borderSkipped: false, maxBarThickness: 84}]},
-    options: base(t, {layout: {padding: {top: 22}}, scales: {x: {grid: {display: false}, ticks: catTick(t), border: {color: t.border}},
+    options: base(t, {layout: {padding: {top: 22}}, scales: {x: {grid: {display: false}, ticks: phone ? {...catTick(t), maxRotation: 90, minRotation: 90} : catTick(t), border: {color: t.border}},
       y: {beginAtZero: true, grid: {color: fade(t.border, 0.7)}, border: {display: false}, ticks: {...tick(t), callback: v => int(v)}}},
       plugins: {legend: {display: false}, tooltip: tooltip(t, {title: items => steps[items[0].dataIndex].name, label: c => ` ${steps[c.dataIndex].sign || ''}${int(steps[c.dataIndex].value)} reviews`})}})};
   },
@@ -190,8 +195,8 @@ export const builders = {
     const QUADS = [
       {key: 'tr', big: true, hot: true, title: 'Big and painful', note: 'Many reviews, mostly 1 to 2 stars. Fix first'},
       {key: 'tl', big: false, hot: true, title: 'Small but severe', note: 'Few reviews, mostly 1 to 2 stars. Cheap, loud, usually operational'},
-      {key: 'br', big: true, hot: false, title: 'Big, milder', note: 'Many reviews, mixed stars. Needs a design or policy answer'},
-      {key: 'bl', big: false, hot: false, title: 'Small, milder', note: 'Few reviews, mixed stars. Watch'},
+      {key: 'br', big: true, hot: false, title: 'Big, milder', note: 'Many reviews, below-median share at 1 to 2 stars. Needs a design or policy answer'},
+      {key: 'bl', big: false, hot: false, title: 'Small, milder', note: 'Few reviews, below-median share at 1 to 2 stars. Watch'},
     ];
     const inQuad = q => points.filter(p => (p.x >= medianX) === q.big && (p.y >= medianY) === q.hot).length;
     // Items with near-identical values would sit on top of each other. Push overlapping bubbles
@@ -257,7 +262,7 @@ export const builders = {
         ctx.fillStyle = t.text1; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(text, s.x + 6, s.y + h / 2 + 0.5);
         taken.push(boxAt(s)); ctx.font = `500 12px ${sans()}`; ctx.fillStyle = t.text1;
       };
-      tag(`median ${Math.round(medianY)}%`, [(w, h) => ({x: a.right - w - 6, y: my - h / 2}), (w, h) => ({x: a.left + 6, y: my - h / 2}), (w, h) => ({x: (a.left + mx) / 2 - w / 2, y: my - h / 2}), (w, h) => ({x: (mx + a.right) / 2 - w / 2, y: my - h / 2})]);
+      tag(`median ${dec(medianY, 1)}%`, [(w, h) => ({x: a.right - w - 6, y: my - h / 2}), (w, h) => ({x: a.left + 6, y: my - h / 2}), (w, h) => ({x: (a.left + mx) / 2 - w / 2, y: my - h / 2}), (w, h) => ({x: (mx + a.right) / 2 - w / 2, y: my - h / 2})]);
       tag(`median ${int(medianX)} reviews`, [(w, h) => ({x: mx - w / 2, y: a.bottom - h - 4}), (w, h) => ({x: mx - w / 2, y: a.top + 4})]);
       const hits = (box, id) => box.l < a.left || box.r > a.right || box.t < a.top || box.b > a.bottom || taken.some(o => o.own !== id && box.l < o.r && box.r > o.l && box.t < o.b && box.b > o.t);
       // Largest bubbles claim their label spot first.

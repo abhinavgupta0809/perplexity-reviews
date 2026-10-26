@@ -3,7 +3,7 @@ const $ = selector => document.querySelector(selector);
 const node = (tag, text, className) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (className) el.className = className; return el; };
 const button = (text, action, className) => { const el = node('button', text, className); el.type = 'button'; el.dataset.focusId = text; el.addEventListener('click', action); return el; };
 const scopes = ['all', 'android', 'ios'];
-const platformName = scope => ({all: 'All', android: 'Android', ios: 'iOS'})[scope];
+const platformName = scope => ({all: 'All', android: 'Android', ios: 'iPhone'})[scope];
 let summary, insights, ui, reviewPromise, renderEpoch;
 const state = {tab: 'overview', platform: 'all', deepKind: 'labels', deepName: '', deepTopic: '', deepLabel: '', deepStars: '', deepSort: 'helpful', deepPage: null, reviewPage: null, filters: {}, drawer: null, jump: null, chart: null, takeaway: null};
 const nf = (value, digits) => value === null || value === undefined ? 'n/a' : new Intl.NumberFormat('en-US', {maximumFractionDigits: digits ?? ui.zero, minimumFractionDigits: digits ?? ui.zero}).format(value);
@@ -14,6 +14,8 @@ const current = () => summary[state.platform];
 const platformRanges = () => summary.meta.platform_ranges || {};
 const splitCoverage = () => { const r = platformRanges(); return Boolean(r.android && r.ios && r.android.end !== r.ios.end); };
 const rangeText = platform => `${dateText(platformRanges()[platform].start)} to ${dateText(platformRanges()[platform].end)}`;
+// Deep Dive opens on specific complaints (the most useful read), not the largest group, which is one-word praise.
+const defaultGroup = (kind, groups) => (kind === 'labels' && groups.some(([name]) => name === 'Specific Complaint') ? 'Specific Complaint' : groups.at(0).at(0));
 const listText = items => items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 function coverageNote() {
   const r = platformRanges(), skipped = summary.meta.platform_coverage?.ios?.not_extended;
@@ -55,7 +57,7 @@ function hashState() {
     state.deepKind = ['labels', 'categories'].includes(params.get('mode')) ? params.get('mode') : 'labels';
     const groups = sortedGroups(current()[state.deepKind]);
     const group = params.get('group');
-    state.deepName = groups.some(([name]) => name === group) ? group : groups.at(ui.zero).at(ui.zero);
+    state.deepName = groups.some(([name]) => name === group) ? group : defaultGroup(state.deepKind, groups);
     if (previousKind !== state.deepKind || previousName !== state.deepName) resetDeepFilters();
   }
 }
@@ -63,7 +65,7 @@ function navigate(tab = state.tab, platform = state.platform) {
   const params = new URLSearchParams({platform});
   if (tab === 'deep-dive') {
     const groups = sortedGroups(summary[platform][state.deepKind]);
-    if (!groups.some(([name]) => name === state.deepName)) state.deepName = groups.at(ui.zero).at(ui.zero);
+    if (!groups.some(([name]) => name === state.deepName)) state.deepName = defaultGroup(state.deepKind, groups);
     params.set('mode', state.deepKind); params.set('group', state.deepName);
   }
   const next = `#${tab}?${params.toString().replaceAll('+', '%20')}`;
@@ -123,7 +125,7 @@ const insightCount = id => { for (const group of ['improvements', 'feature_reque
 const opportunityJump = (id, text) => ({text, onClick: () => { state.jump = id; navigate('opportunities'); }, href: `#opportunities?${new URLSearchParams({platform: state.platform})}`});
 const deepJump = (mode, group, text, platform = state.platform) => ({text, href: `#deep-dive?${new URLSearchParams({platform, mode, group}).toString().replaceAll('+', '%20')}`});
 function takeawayPoints(data, weeks, categories) {
-  // Findings + findings = insight = hypothesis. Each card holds two or three findings from different cuts of the reviews
+  // Findings + findings = insight → hypothesis. Each card holds two or three findings from different cuts of the reviews
   // (helpful votes, co-occurrence, platform, time, competitors), the tension they add up to for the user and for the
   // company, and the idea that tension suggests, as a test. Every figure comes from summary.json for the current scope.
   const s = data.stats, F = data.facts || {}, r1 = value => nf(value, 1), r2 = value => nf(value, ui.rating_digits), points = [];
@@ -137,10 +139,10 @@ function takeawayPoints(data, weeks, categories) {
   // 1. Free users hit the wall at the first upload.
   const free = cat('Free Limits & Paywall'), images = cat('Images & Files'), useCases = cat('Use Cases'), accuracy = cat('Answer Accuracy'), fi = pair('Free Limits & Paywall', 'Images & Files');
   if (ok(free) && fi) { const onePhoto = insightCount('i_free_images');
-    points.push({chart: 'about', see: 'What reviews are about', title: 'Free users hit the wall at the first upload, not the first answer',
+    points.push({chart: 'about', see: 'What reviews are about', title: 'Free users say they hit the wall at upload, not at the answer',
       findings: [{source: REV, text: `${nf(complaints(free))} ${scopeNote}complaints are about free limits (${r2(free.avg_rating)} stars). ${nf(fi.count)} of them are also about images and files, ${x(fi.lift)} what chance would give (${r2(fi.avg_rating)} stars)${onePhoto && onePhoto !== fi.count ? `; ${nf(onePhoto)} describe a one-photo-a-day or one-photo-a-month cap` : ''}.`},
-        ...(ok(useCases) && ok(accuracy) ? [{source: REV, text: `The same reviews praise the answers: ${nf(praise(useCases))} praise what people use Perplexity for (${r2(useCases.avg_rating)} stars) and ${nf(praise(accuracy))} praise accuracy, against ${nf(complaints(accuracy))} accuracy complaints.`}] : [])],
-      insight: 'People come to ask a question, find the value the moment they upload something, and meet the paywall right there. Perplexity wants conversion and gates the one action that proves the product; the user reads it as never having been allowed to try.',
+        ...(ok(useCases) && ok(accuracy) ? [{source: REV, text: `Other reviews praise the answers: ${nf(praise(useCases))} praise what people use Perplexity for (${r2(useCases.avg_rating)} stars) and ${nf(praise(accuracy))} praise accuracy, against ${nf(complaints(accuracy))} accuracy complaints.`}] : [])],
+      insight: 'Reviewers come for answers, seem to find the value when they upload something, and meet the paywall right there. The upload cap likely exists to drive conversion, but it may gate the one action that proves the product; the user reads it as never having been allowed to try.',
       hypothesis: 'A first-week upload allowance, or showing the cap before the upload instead of after it, raises day-7 retention of new free users without lowering Pro conversion. Test against the current gate on the first-session cohort.',
       more: onePhoto ? opportunityJump('i_free_images', 'See the one-photo limit opportunity') : deepJump('categories', free.name, 'Read the free-limit reviews')}); }
 
@@ -156,11 +158,11 @@ function takeawayPoints(data, weeks, categories) {
     const skewAll = summary.all.facts?.skew, skCAll = skewAll?.by?.['Credits & Paid Limits'];
     const iphoneHeavy = Boolean(skCAll && skCAll.ios_pct >= 1.5 * skewAll.ios_base_pct);
     points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: 'Pro users pay to hit a different wall',
-      findings: [{source: REV, text: `${nf(complaints(credits))} ${scopeNote}complaints are about credits and paid limits (${r2(credits.avg_rating)} stars${rankNote(credits)})${skC && all ? `; ${ratePct(skC.ios_pct)}% come from iPhone against ${ratePct(F.skew.ios_base_pct)}% of all substantive reviews${skewThrough}` : ''}.`},
-        ...(cc ? [{source: REV, text: `${nf(cc.count)} reviews pair credits with the Computer agent product, ${x(cc.lift)} what chance would give (${r2(cc.avg_rating)} stars): the agent burns the credits the subscription bought.`}] : []),
+      findings: [{source: REV, text: `${nf(complaints(credits))} ${scopeNote}complaints are about credits and paid limits (${r2(credits.avg_rating)} stars${rankNote(credits)})${skC && all ? `; ${ratePct(skC.ios_pct)}% of all credits reviews come from iPhone against ${ratePct(F.skew.ios_base_pct)}% of all substantive reviews${skewThrough}` : ''}.`},
+        ...(cc ? [{source: REV, text: `${nf(cc.count)} reviews pair credits with the Computer agent product, ${x(cc.lift)} what chance would give (${r2(cc.avg_rating)} stars): reviewers say the agent burns the credits the subscription bought.`}] : []),
         ...(claudeCredits ? [{source: REV, text: `Reviews that name Claude are ${x(claudeCredits[2])} over-represented in credit complaints${claudeModels ? ` and ${x(claudeModels[2])} in model-choice complaints` : ''}.`}] : [])],
-      insight: ['Subscribers believed paying would remove limits.', cc ? 'It moved the meter onto the agent product Perplexity promotes hardest' + (claudeCredits ? ', and when the meter runs out they name the model vendor they could pay directly instead.' : '.') : '', iphoneHeavy ? 'The iPhone skew says these are the paying users.' : ''].filter(Boolean).join(' '),
-      hypothesis: 'A visible credit meter and a cost estimate before each agent run cut Pro credit complaints and Pro churn more than raising the cap would. Show the estimate to half of Pro users for 60 days and compare cancellations that cite limits.',
+      insight: ['Subscribers say they expected paying to remove limits.', cc ? 'Instead the meter moved onto Computer, the agent product' + (claudeCredits ? ', and when it runs out they name the model vendor they could pay directly instead.' : '.') : 'They found a credit wall instead' + (claudeCredits ? ', and the model vendor they name is one they could pay directly.' : '.'), iphoneHeavy && all ? 'The iPhone skew hints that these lean toward paying users.' : ''].filter(Boolean).join(' '),
+      hypothesis: 'A credit count that\'s final when the run finishes, plus a cost estimate before each agent run, cuts credit complaints and churn among paying users more than raising the cap would. Show the estimate to half of them for 60 days and compare cancellations that cite limits.',
       more: opportunityJump('i_credits', 'See the credits opportunity')}); }
 
   // 3. The price complaint comes from fans.
@@ -168,13 +170,14 @@ function takeawayPoints(data, weeks, categories) {
   const wallAreas = [['free limits', free], ['credits', credits], ['billing', billing]].filter(([, c]) => ok(c));
   // The card's claim is that every wall rates below pricing; "far" only when each is at least half a star lower.
   const wallGap = ok(price) && wallAreas.length ? Math.min(...wallAreas.map(([, c]) => price.avg_rating - c.avg_rating)) : null;
-  if (ok(price) && fp && F.five_star && wallGap !== null && wallGap > 0) {
+  // It also needs the five-star share among price complaints to stand clearly above the base rate (1.5x), or the "fans" claim fails.
+  if (ok(price) && fp && F.five_star && fp.five_pct >= 1.5 * F.five_star.base_pct && wallGap !== null && wallGap > 0) {
     const walls = wallAreas.map(([n, c]) => `${n} ${r2(c.avg_rating)}`).join(', ');
     points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: 'The price complaint comes from fans; the walls make enemies',
       findings: [{source: REV, text: `${ratePct(fp.five_pct)}% of the ${nf(fp.count)} ${scopeNote}pricing complaints give five stars, against ${ratePct(F.five_star.base_pct)}% of all complaints. Pricing & Value averages ${r2(price.avg_rating)} stars.`},
         ...(walls ? [{source: REV, text: `The walls rate ${wallGap >= 0.5 ? 'far ' : ''}lower: ${walls} stars.`}] : [])],
-      insight: 'The people who say it is too expensive mostly like the product and are negotiating. The angry reviews are about walls and billing, not the number on the price tag. Perplexity hears "price" and reaches for discounts; the reviews say the price is not the problem for anyone who is actually angry.',
-      hypothesis: 'A lower or annual tier converts the five-star price complainers and does nothing for wall complaints. Test a cheaper tier on users who hit a limit and rated 4+ in-app, and separately a limit change on the one-star cohort.',
+      insight: 'People who say it\'s too expensive rate the app well above people stopped by limits or billing, and many still give five stars: they read as negotiating. The angriest reviews are about walls and billing, not the number on the price tag. A discount aimed at "price" probably won\'t reach the people who are actually angry.',
+      hypothesis: 'A cheaper tier, or making the existing annual price easier to find, converts the five-star price complainers and does nothing for wall complaints. Test a cheaper tier on users who hit a limit and rated 4+ in-app, and separately a limit change on the one-star cohort.',
       more: opportunityJump('f_pricing', 'See the pricing requests')}); }
 
   // 4. The lowest ratings have no human in them.
@@ -183,32 +186,34 @@ function takeawayPoints(data, weeks, categories) {
   const humanAreas = [billing, login, support].filter(ok), bottomNames = rated.slice(0, humanAreas.length).map(c => c.name);
   const humanBottom = humanAreas.length && humanAreas.every(c => bottomNames.includes(c.name));
   if (ok(billing) && bs && humanBottom) { const cancel = insightCount('i_cancel');
-    points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: 'The lowest ratings come from moments with no human in them, and other users upvote those most',
+    points.push({chart: 'satisfaction', see: 'Satisfaction by category', title: votesFor('Customer Support') ? 'The lowest ratings come from moments with no human in them, and support complaints draw extra upvotes' : 'The lowest ratings come from moments with no human in them',
       findings: [{source: REV, text: `${nf(bs.count)} ${scopeNote}reviews are about billing and support together, ${x(bs.lift)} what chance would give, at ${r2(bs.avg_rating)} stars. Billing ${r2(billing.avg_rating)}${ok(login) ? `, login ${r2(login.avg_rating)}` : ''}${ok(support) ? `, support ${r2(support.avg_rating)}` : ''}: the lowest-rated areas on the page.${cancel ? ` ${nf(cancel)} say they could not cancel or get a refund.` : ''}`},
         ...(votesFor('Customer Support') ? [{source: REV, text: `On Google Play, support complaints get ${votesFor('Customer Support')} their share of helpful votes${votesFor('Speed') ? `; speed praise gets ${votesFor('Speed')}` : ''}.`}] : [])],
-      insight: 'The lowest ratings are not about the model. They come from a charge nobody can reverse, a login nobody can fix, a ticket nobody answers, and other users upvote them because everyone fears the same thing. The model ships weekly; the cancel path never does.',
+      insight: votesFor('Customer Support') ? 'The lowest ratings aren\'t about the model. They come from a charge nobody reversed, a login nobody fixed, a ticket nobody answered. Support complaints also collect extra helpful votes, which suggests other users worry about the same thing. None of these needs a model change to fix.' : 'The lowest ratings aren\'t about the model. They come from a charge nobody reversed, a login nobody fixed, a ticket nobody answered. None of these needs a model change to fix.',
       hypothesis: 'A visible cancel path and a stated refund SLA remove more one-star reviews per engineer-week than any model change. Measure one-star billing reviews per 1,000 subscribers before and after.',
       more: cancel ? opportunityJump('i_cancel', 'See the cancel-and-refund opportunity') : deepJump('categories', billing.name, 'Read the billing reviews')}); }
 
   // 5. Replies go to the reviews that say the least.
   const R = F.replies, gb = R?.by_label?.['Generic Bad'], scp = R?.by_label?.['Specific Complaint'];
-  if (gb && scp && gb.count >= 100 && gb.rate > scp.rate) { const by = R.by_category, rate = name => by[name] ? `${name.toLowerCase().replace(' & account', '').replace(' & subscription', '').replace('customer ', '')} ${ratePct(by[name].rate)}%` : null;
+  if (gb && scp && gb.count >= 100 && gb.rate > scp.rate) { const by = R.by_category, short = name => name.toLowerCase().replace(' & account', '').replace(' & subscription', '').replace('customer ', ''), rate = name => by[name] ? `${short(name)} ${ratePct(by[name].rate)}%` : null;
+    // Areas a human could resolve whose reply rate still beats the one-liners: named as exceptions, not hidden.
+    const fixable = ['Login & Account', 'Customer Support', 'Billing & Subscription'].filter(name => by[name]), beat = fixable.filter(name => by[name].rate >= gb.rate).map(short);
     points.push({chart: 'about', see: 'What reviews are about', title: 'Perplexity replies to the reviews that say the least',
       findings: [{source: REV, text: `On Google Play, ${ratePct(gb.rate)}% of one-line "bad" reviews with nothing specific in them get a developer reply, against ${ratePct(scp.rate)}% of specific complaints (${nf(R.total)} replies in all).`},
         {source: REV, text: `Reply rate on specific complaints by area: ${['Login & Account', 'Customer Support', 'Billing & Subscription', 'Free Limits & Paywall', 'Answer Accuracy'].map(rate).filter(Boolean).join(', ')}.`}],
-      insight: 'Replies are triggered by low stars, not by whether the review says something a reply could fix. The specific complaints a human could resolve get fewer answers than reviews that contain nothing to answer. The user wants a fix; the company wants the rating moved; a template gives neither.',
+      insight: `Replies line up with low stars more than with whether the review says something a reply could fix. ${beat.length === fixable.length ? 'Even so, the complaints a human could resolve get answered more often than the one-liners.' : `Most complaints a human could resolve get fewer answers than reviews with nothing in them to answer${beat.length ? ` (${listText(beat)} ${beat.length > 1 ? 'are the exceptions' : 'is the exception'})` : ''}.`} The user wants a fix, and a template reply is neither a fix nor a reason to change the rating.`,
       hypothesis: 'Routing replies by label, specific billing, login and support complaints first, raises the share of replied reviews whose rating is later edited up. Measure rating edits after reply, by label, over 60 days.',
       more: deepJump('labels', complaintLabel, 'Read the specific complaints')}); }
 
-  // 6. Free users compare to Google; paying users compare to the model vendors.
+  // 6. On sources reviewers compare to Google; on models, to the model vendors.
   const google = comp('Google Search'), chatgpt = comp('ChatGPT'), gemini = comp('Gemini');
   // The title holds only while Claude's top over-representation is about models or money and Google's is not.
   const moneyOrModels = ['Model Choice', 'Credits & Paid Limits', 'Pricing & Value'];
   if (google?.over?.length && claude?.over?.length && chatgpt && moneyOrModels.includes(claude.over[0][0]) && !moneyOrModels.includes(google.over[0][0])) {
-    points.push({chart: 'competitors', see: 'Competitors named', title: 'Free users compare Perplexity to Google; paying users compare it to the model vendors',
+    points.push({chart: 'competitors', see: 'Competitors named', title: 'On sources, reviewers compare Perplexity to Google; on models, to the model vendors',
       findings: [{source: REV, text: `Reviews naming Google Search are ${x(google.over[0][2])} over-represented in ${google.over[0][0]} (${nf(google.count)} ${scopeNote}reviews: ${nf(google.praise)} praise, ${nf(google.complaints)} complaints).`},
         {source: REV, text: `Reviews naming Claude are ${x(claude.over[0][2])} over-represented in ${claude.over[0][0]}${chatgpt.over?.[0] ? `; ChatGPT ${x(chatgpt.over[0][2])} in ${chatgpt.over[0][0]}` : ''}${gemini?.over?.[0] ? `; Gemini ${x(gemini.over[0][2])} in ${gemini.over[0][0]}` : ''}. ChatGPT is the most-named rival: ${nf(chatgpt.count)} reviews at ${r2(chatgpt.avg_rating)} stars.`}],
-      insight: 'Free users compare Perplexity to Google, on sources. Paying users compare it to the model vendors, on which models they get and how much. Perplexity is a search product to the people who do not pay and a model reseller to the people who do, and the second comparison is the one it cannot win on price.',
+      insight: 'When reviewers talk about sources, the rival they name is Google. When they talk about models and limits, they name the model vendors, and those reviews read like paying users. So Perplexity is a search product in one comparison and a bundle of other companies\' models in the other, and the second comparison is hard to win on price.',
       hypothesis: 'Positioning Pro on what no single vendor sells (several models with cited sources in one place) and the free tier on sources against Google lifts conversion more than matching vendor limits. Test the two messages on the upgrade screen.',
       more: {text: 'Read the reviews naming ChatGPT', href: `#reviews?${new URLSearchParams({platform: state.platform})}`, onClick: () => { resetReviewFilters(); state.filters.competitor = 'ChatGPT'; navigate('reviews'); }}}); }
 
@@ -278,7 +283,7 @@ function overview() {
   root.append(lead);
 
   const weeks = data.weekly, points = takeawayPoints(data, weeks, categoryEntries(data.categories)), backlinks = chart => takeawayLinks(points, chart);
-  root.append(sectionHeading('Insights', `${platformName(state.platform)} · findings + findings = insight = hypothesis · each card adds up two or three findings from different cuts of the reviews into the tension behind them, then the idea to test · store reviews are self-selected, so these are hypotheses, not validated problems`), takeaways(points));
+  root.append(sectionHeading('Insights', `${platformName(state.platform)} · findings + findings = insight → hypothesis · each card adds up two or three findings from different cuts of the reviews into the tension behind them, then the idea to test · store reviews are self-selected, so these are hypotheses, not validated problems`), takeaways(points));
 
   const weekLabels = weeks.map(w => new Date(w.week).toLocaleDateString('en-US', {month: 'short', day: 'numeric', timeZone: 'UTC'}));
   const trend = node('div', undefined, 'grid');
@@ -355,8 +360,10 @@ function overview() {
     subtitle: 'Reviews that name another product, split by the stars the reviewer gave Perplexity',
     data: {labels: competitors.map(c => c.name), series: [{name: '4 to 5 stars', token: '--praise', values: competitors.map(c => band3(c)[2])}, {name: '3 stars', token: '--neutral', values: competitors.map(c => band3(c)[1])}, {name: '1 to 2 stars', token: '--complaint', values: competitors.map(c => band3(c)[0])}]},
     table: {columns: ['Competitor', '4 to 5 stars', '3 stars', '1 to 2 stars', 'Total'], rows: competitors.map(c => [c.name, nf(band3(c)[2]), nf(band3(c)[1]), nf(band3(c)[0]), nf(c.count)])}}));
-  const named = data.languages.filter(l => l.name !== 'Other'), top = named.slice(0, 6), rest = s.count - top.reduce((sum, l) => sum + l.count, 0);
-  const languageSegments = [...top.map((l, i) => ({name: languageName(l.name), value: l.count, token: `--seq-${i + 1}`})), {name: 'Other languages', value: rest, token: '--neutral'}];
+  // "und" (no language detected) is neither English nor counted in "not English", so it gets its own row.
+  const undetermined = data.languages.find(l => l.name === 'und')?.count ?? ui.zero;
+  const named = data.languages.filter(l => l.name !== 'Other' && l.name !== 'und'), top = named.slice(0, 6), rest = s.count - undetermined - top.reduce((sum, l) => sum + l.count, 0);
+  const languageSegments = [...top.map((l, i) => ({name: languageName(l.name), value: l.count, token: `--seq-${i + 1}`})), {name: 'Other languages', value: rest, token: '--neutral'}, ...(undetermined ? [{name: 'Not detected', value: undetermined, token: '--text-3'}] : [])];
   context.append(chartCard({span: 5, kind: 'donut', height: 210, title: 'Languages', subtitle: `Language of the review text · ${countNote(s.count)}`,
     data: {segments: languageSegments, center: share(s.non_english, s.count), caption: 'not English'},
     legend: languageSegments.map(seg => ({token: seg.token, name: seg.name, value: nf(seg.value), share: share(seg.value, s.count)})),
@@ -417,8 +424,8 @@ function resetDeepFilters() { state.deepTopic = state.deepLabel = state.deepStar
 async function deepDive() {
   const rows = await reviews(), root = node('div', undefined, 'deep-layout'), data = current();
   const sidebar = node('aside', undefined, 'sidebar'); sidebar.setAttribute('aria-label', 'Deep Dive groups'); const switcher = node('div', undefined, 'segmented');
-  for (const [kind, title] of [['labels', 'Labels'], ['categories', 'Categories']]) { const control = button(title, () => { state.deepKind = kind; state.deepName = sortedGroups(data[kind]).at(ui.zero).at(ui.zero); resetDeepFilters(); navigate(); }); control.setAttribute('aria-pressed', String(state.deepKind === kind)); switcher.append(control); } sidebar.append(switcher);
-  const groups = sortedGroups(data[state.deepKind]); if (!groups.some(([name]) => name === state.deepName)) state.deepName = groups.at(ui.zero).at(ui.zero);
+  for (const [kind, title] of [['labels', 'Labels'], ['categories', 'Categories']]) { const control = button(title, () => { state.deepKind = kind; state.deepName = defaultGroup(kind, sortedGroups(data[kind])); resetDeepFilters(); navigate(); }); control.setAttribute('aria-pressed', String(state.deepKind === kind)); switcher.append(control); } sidebar.append(switcher);
+  const groups = sortedGroups(data[state.deepKind]); if (!groups.some(([name]) => name === state.deepName)) state.deepName = defaultGroup(state.deepKind, groups);
   const choose = name => { state.deepName = name; resetDeepFilters(); navigate(); };
   const dropdown = selectControl(groups.map(([name, stats]) => [name, `${name} · ${nf(stats.count)}`]), state.deepName, choose); sidebar.append(field('Choose a group', dropdown, 'sidebar-select'));
   const list = node('div', undefined, 'sidebar-list');
@@ -456,22 +463,23 @@ function opportunityCard(item, kind) {
   if (stats.count < ui.few_reviews) card.append(node('p', 'Few reviews in this view', 'few-note'));
   if (scope.next) card.append(nextStep(scope.next));
   const foot = node('div', undefined, 'opp-foot'), split = node('p', undefined, 'split');
-  split.append(dotted(`Android ${nf(stats.android_count)}`, '--android'), dotted(`iOS ${nf(stats.ios_count)}`, '--ios'));
+  split.append(dotted(`Android ${nf(stats.android_count)}`, '--android'), dotted(`iPhone ${nf(stats.ios_count)}`, '--ios'));
   const see = button('See reviews', () => openDrawer(item, see), 'see'); see.append(icon('arrow')); see.dataset.insightId = item.id; foot.append(split, see); card.append(foot); return card;
 }
 const median = values => { const sorted = [...values].sort((a, b) => a - b), mid = Math.floor(sorted.length / 2); return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2; };
 function jumpToInsight(id) { const target = document.getElementById(`insight-${id}`); if (!target) return; target.classList.add('highlight'); target.scrollIntoView({block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}); target.querySelector('button').focus({preventScroll: true}); }
 // Three lines under the matrix: what sits in each quadrant that calls for action, with a link to each card. Same medians as the chart.
 function startHere(points, medianX, medianY) {
+  const cut = `${nf(medianY, 1)}%`, size = nf(medianX);
   const groups = [
-    {title: 'Fix first', note: 'many reviews, mostly 1 to 2 stars', test: p => p.x >= medianX && p.y >= medianY},
-    {title: 'Cheap and loud', note: 'few reviews, mostly 1 to 2 stars; usually operational', test: p => p.x < medianX && p.y >= medianY},
-    {title: 'Big, mixed', note: 'many reviews, mixed stars; needs a design, pricing, or reliability answer rather than a hotfix', test: p => p.x >= medianX && p.y < medianY}];
+    {title: 'Fix first', note: `${size}+ reviews, ${cut}+ at 1 to 2 stars`, test: p => p.x >= medianX && p.y >= medianY},
+    {title: 'Cheap and loud', note: `under ${size} reviews, ${cut}+ at 1 to 2 stars; usually operational`, test: p => p.x < medianX && p.y >= medianY},
+    {title: 'Big, milder', note: `${size}+ reviews, under ${cut} at 1 to 2 stars; needs a design, pricing, or reliability answer rather than a hotfix`, test: p => p.x >= medianX && p.y < medianY}];
   const list = node('ol', undefined, 'start-list');
   for (const group of groups) { const members = points.filter(group.test).sort((a, b) => b.x - a.x); if (!members.length) continue;
     const row = node('li'); const head = node('p', undefined, 'start-head'); head.append(node('strong', group.title), node('span', ` · ${group.note}`)); row.append(head);
     const chips = node('p', undefined, 'start-items'); members.forEach((p, i) => { const link = node('a', `${p.name} (${nf(p.x)})`); link.href = `#opportunities?${new URLSearchParams({platform: state.platform})}`; link.addEventListener('click', event => { event.preventDefault(); jumpToInsight(p.id); }); chips.append(link); if (i < members.length - ui.one) chips.append(node('span', ' · ')); }); row.append(chips); list.append(row); }
-  const wrap = node('section', undefined, 'start-here'); wrap.append(node('h2', 'Start here'), node('p', 'Open "Next step" on any card for the check to run. Store reviews size the signal, not the problem.', 'muted'), list); return wrap;
+  const wrap = node('section', undefined, 'start-here'); wrap.append(node('h2', 'Start here'), node('p', `Open "Next step" on any card for the check to run. Store reviews size the signal, not the problem. Groups split at the median size (${size} reviews) and the median share at 1 to 2 stars (${cut}).`, 'muted'), list); return wrap;
 }
 function opportunities() {
   const root = node('div'), data = current(), s = data.stats; root.append(node('p', insights.evidence_note, 'evidence'));
@@ -598,7 +606,7 @@ async function boot() {
     const meta = summary.meta, split = splitCoverage();
     $('#subtitle').textContent = split ? `${nf(summary.all.stats.count)} reviews · Google Play ${rangeText('android')} · App Store ${rangeText('ios')}` : `${nf(summary.all.stats.count)} reviews · Google Play and App Store · ${dateText(meta.date_range.start)} to ${dateText(meta.date_range.end)}`;
     if (split) { $('#coverage').textContent = coverageNote(); $('#coverage').hidden = false; }
-    $('#footer').append(node('p', split ? `Public Google Play and App Store reviews · Android ${nf(meta.platform_totals.android)}, ${rangeText('android')} / iOS ${nf(meta.platform_totals.ios)}, ${rangeText('ios')} (UTC).` : `Public Google Play and App Store reviews · Android ${nf(meta.platform_totals.android)} / iOS ${nf(meta.platform_totals.ios)} · ${dateText(meta.date_range.start)} to ${dateText(meta.date_range.end)} (UTC).`), node('p', `Labels and sentiment by an LLM, scored against ${nf(meta.gold.n)} hand-labeled reviews. Sentiment averages exclude ${nf(summary.all.stats.nonsense_count)} Nonsense reviews; store-star averages and review counts include them. Primary label agreement ${nf(meta.gold.primary_label.pct, ui.rating_digits)}% (${meta.gold.primary_label.matches}/${meta.gold.primary_label.n}); category agreement ${nf(meta.gold.primary_category.pct, ui.rating_digits)}% (${meta.gold.primary_category.matches}/${meta.gold.primary_category.n}).`), node('p', `Independent, unofficial analysis of public store reviews. Generated ${dateText(meta.generated_at.split('T').at(ui.zero))} from the source run timestamp.`));
+    $('#footer').append(node('p', split ? `Public Google Play and App Store reviews · Android ${nf(meta.platform_totals.android)}, ${rangeText('android')} / iPhone ${nf(meta.platform_totals.ios)}, ${rangeText('ios')} (UTC).` : `Public Google Play and App Store reviews · Android ${nf(meta.platform_totals.android)} / iPhone ${nf(meta.platform_totals.ios)} · ${dateText(meta.date_range.start)} to ${dateText(meta.date_range.end)} (UTC).`), node('p', `Labels and sentiment by an LLM, scored against ${nf(meta.gold.n)} hand-labeled reviews. Sentiment averages exclude ${nf(summary.all.stats.nonsense_count)} Nonsense reviews; store-star averages and review counts include them. Primary label agreement ${nf(meta.gold.primary_label.pct, ui.rating_digits)}% (${meta.gold.primary_label.matches}/${meta.gold.primary_label.n}); category agreement ${nf(meta.gold.primary_category.pct, ui.rating_digits)}% (${meta.gold.primary_category.matches}/${meta.gold.primary_category.n}).`), node('p', `Independent, unofficial analysis of public store reviews. Generated ${dateText(meta.generated_at.split('T').at(ui.zero))} from the source run timestamp.`));
     insights = await fetchJSON('data/insights.json'); hashState(); initControls(); await renderPage();
   } catch (error) { $('#content').replaceChildren(errorView(error)); }
 }

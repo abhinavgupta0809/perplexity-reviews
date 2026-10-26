@@ -251,3 +251,15 @@ def test_top_ten_topics_languages_and_version_cutoff(rows, taxonomy):
     language_rows=[rows[0] | {'language':lang} for lang in ['aa','ab','ac','ad','ae','af','ag','ah','ai']]
     result=site.scope_summary(language_rows,[],'all',[],taxonomy)
     assert result['languages']==[{'name':lang,'count':1} for lang in ['aa','ab','ac','ad','ae','af','ag','ah','Other']]
+
+
+def test_substantive_platform_share_token(rows, taxonomy):
+    # The substantive baseline counts only reviews with a category, through the last day both stores cover.
+    source = insights_source()
+    source['callouts'][0]['text'] = '{{pct_ios_substantive_overlap}}'
+    result = site.resolve_insights(source, rows, taxonomy)['callouts'][0]['scopes']
+    end = site.overlap_end(rows)
+    substantive = [r for r in rows if r['date_utc'] <= end and r['categories']]
+    assert substantive and len(substantive) < len([r for r in rows if r['date_utc'] <= end])
+    expected = f"{sum(r['platform'] == 'ios' for r in substantive) / len(substantive) * 100:.0f}%"
+    assert result['all']['text'] == result['ios']['text'] == expected

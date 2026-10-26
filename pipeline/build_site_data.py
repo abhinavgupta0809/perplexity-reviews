@@ -19,7 +19,7 @@ SCOPES = ('all', 'android', 'ios')
 GROUPS = ('callouts', 'improvements', 'feature_requests', 'strengths')
 MATCH_KEYS = {'labels_any', 'categories_any', 'categories_all', 'pattern', 'regression_claim', 'competitors_any', 'platform'}
 TOKENS = {'count', 'pct_low_star', 'avg_rating', 'ios_count', 'android_count', 'pct_of_substantive',
-          'pct_ios_overlap', 'pct_ios_all_overlap', 'overlap_end'}
+          'pct_ios_overlap', 'pct_ios_all_overlap', 'pct_ios_substantive_overlap', 'overlap_end'}
 REVIEW_COLUMNS = ('review_id', 'platform', 'timestamp', 'date_utc', 'rating', 'title', 'review_text', 'app_version', 'thumbs_up', 'labels', 'categories', 'sentiment_rating', 'language', 'english_translation', 'topic', 'competitors', 'regression_claim', 'rating_mismatch', 'is_truncated')
 
 
@@ -147,6 +147,9 @@ def resolve_insights(source, rows, taxonomy, both_end=None):
     both_end = both_end or overlap_end(rows)
     in_both = [r for r in rows if r['date_utc'] <= both_end]
     ios_all = percent(sum(r['platform'] == 'ios' for r in in_both), len(in_both))
+    # Baseline for items built from substantive reviews: the same date rule, counting only reviews with a category.
+    sub_both = [r for r in in_both if r['categories']]
+    ios_substantive = percent(sum(r['platform'] == 'ios' for r in sub_both), len(sub_both))
     result = {k: source[k] for k in ('evidence_note', 'label_takeaways', 'category_notes')}
     seen = set()
     for group in GROUPS:
@@ -169,7 +172,8 @@ def resolve_insights(source, rows, taxonomy, both_end=None):
                 stats = statistics(subset, substantive, taxonomy)
                 # iPhone share is a cross-platform fact, so it uses every platform whatever the scope, and counts only
                 # dates both stores cover, so a one-platform append cannot move it.
-                stats.update(pct_ios_overlap=ios_share, pct_ios_all_overlap=ios_all, overlap_end=day_text(both_end))
+                stats.update(pct_ios_overlap=ios_share, pct_ios_all_overlap=ios_all, pct_ios_substantive_overlap=ios_substantive,
+                             overlap_end=day_text(both_end))
                 resolved['scopes'][scope] = {'stats': stats, 'review_ids': [r['review_id'] for r in subset],
                                            **{k: fill_tokens(item[k], stats) for k in ('title', 'text', 'desc', 'next') if k in item}}
             result[group].append(resolved)
